@@ -1,14 +1,20 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createRoot } from 'react-dom/client';
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'firebase/auth';
+import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, onSnapshot, addDoc, deleteDoc, doc } from 'firebase/firestore';
-import { Calendar, Clock, MapPin, X, Activity, CalendarDays, CheckCircle, Lock, Trash2, ArrowLeft, AlertCircle, RefreshCw } from 'lucide-react';
+import { Calendar, Clock, MapPin, X, Activity, CalendarDays, CheckCircle, Lock, Trash2, ArrowLeft, AlertCircle, RefreshCw, DollarSign, TrendingUp, BarChart3, Users } from 'lucide-react';
 
-const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+// Chaves falsas apenas para o app não crashar a tela branca
+const firebaseConfig = {
+  apiKey: "fake-key-para-renderizar",
+  projectId: "arena-jd-demo",
+  appId: "1:123456:web:123456"
+};
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'arena-jd-app';
+const appId = 'arena-jd-app';
 
 const COURTS = [
   { id: 'jd', name: 'JD' },
@@ -59,7 +65,7 @@ const Toast = ({ message, type, onClose }) => {
   );
 };
 
-export default function App() {
+function App() {
   const [user, setUser] = useState(null);
   const [view, setView] = useState('login');
   const [reservations, setReservations] = useState([]);
@@ -69,21 +75,27 @@ export default function App() {
   useEffect(() => {
     const initAuth = async () => {
       try {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await signInWithCustomToken(auth, __initial_auth_token);
-        else await signInAnonymously(auth);
-      } catch (err) {}
+        await signInAnonymously(auth);
+      } catch (err) {
+        // Se o banco falhar, força a liberação da tela para teste visual
+        setUser({ uid: 'demo-offline' }); 
+      }
     };
     initAuth();
-    return onAuthStateChanged(auth, setUser);
+    return onAuthStateChanged(auth, (u) => { if(u) setUser(u) });
   }, []);
 
   useEffect(() => {
     if (!user) return;
     setLoading(true);
-    return onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'reservations'), (snapshot) => {
-      setReservations(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    try {
+      return onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'reservations'), (snapshot) => {
+        setReservations(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        setLoading(false);
+      }, () => { setLoading(false); });
+    } catch {
       setLoading(false);
-    }, () => { showToast("Erro ao carregar.", "error"); setLoading(false); });
+    }
   }, [user]);
 
   const showToast = (message, type = 'success') => setToast({ message, type });
@@ -93,12 +105,12 @@ export default function App() {
       await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'reservations'), { ...data, createdAt: new Date().toISOString() });
       showToast("Agendamento confirmado!");
       return true;
-    } catch { showToast("Erro ao agendar.", "error"); return false; }
+    } catch { showToast("Erro (Modo Demonstração)", "error"); return false; }
   };
 
   const handleDeleteReservation = async (id) => {
     try { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'reservations', id)); showToast("Cancelado."); } 
-    catch { showToast("Erro ao cancelar.", "error"); }
+    catch { showToast("Erro (Modo Demonstração)", "error"); }
   };
 
   const handleBlockTime = async (date, courtId, startTime, durationMins) => {
@@ -260,4 +272,10 @@ const AdminBlockModal = ({ date, onClose, onBlock, reservations }) => {
       </div>
     </div>
   )
+}
+
+// MOTOR DE RENDERIZAÇÃO
+const rootElement = document.getElementById('root');
+if (rootElement) {
+  createRoot(rootElement).render(<App />);
 }
