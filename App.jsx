@@ -5,12 +5,7 @@ import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, onSnapshot, addDoc, deleteDoc, doc } from 'firebase/firestore';
 import { Calendar, Clock, MapPin, X, Activity, CalendarDays, CheckCircle, Lock, Trash2, ArrowLeft, AlertCircle, RefreshCw, DollarSign, TrendingUp, BarChart3, Users } from 'lucide-react';
 
-// Chaves falsas apenas para o app não crashar a tela branca
-const firebaseConfig = {
-  apiKey: "fake-key-para-renderizar",
-  projectId: "arena-jd-demo",
-  appId: "1:123456:web:123456"
-};
+const firebaseConfig = { apiKey: "fake-key-para-renderizar", projectId: "arena-jd-demo", appId: "1:123456:web:123456" };
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -24,19 +19,16 @@ const COURTS = [
 ];
 
 const DURATIONS = [
-  { label: '30 Minutos', value: 30, price: 20 },
-  { label: '1 Hora', value: 60, price: 40 },
-  { label: '1h 30m', value: 90, price: 60 },
-  { label: '2 Horas', value: 120, price: 80 },
-  { label: '2h 30m', value: 150, price: 100 },
-  { label: '3 Horas', value: 180, price: 120 }
+  { label: '30 Minutos', value: 30, price: 20 }, { label: '1 Hora', value: 60, price: 40 },
+  { label: '1h 30m', value: 90, price: 60 }, { label: '2 Horas', value: 120, price: 80 },
+  { label: '2h 30m', value: 150, price: 100 }, { label: '3 Horas', value: 180, price: 120 }
 ];
+
+const SPORTS = ['Beach Tênis', 'Vôlei Adaptado/Normal', 'Futevôlei', 'Carimba', 'Exercícios Funcionais'];
 
 const generateTimeSlots = () => {
   const slots = [];
-  for (let i = 300; i < 1380; i += 30) {
-    slots.push(`${String(Math.floor(i/60)).padStart(2,'0')}:${String(i%60).padStart(2,'0')}`);
-  }
+  for (let i = 300; i < 1380; i += 30) slots.push(`${String(Math.floor(i/60)).padStart(2,'0')}:${String(i%60).padStart(2,'0')}`);
   return slots;
 };
 const TIME_SLOTS = generateTimeSlots();
@@ -73,14 +65,7 @@ function App() {
   const [toast, setToast] = useState(null);
 
   useEffect(() => {
-    const initAuth = async () => {
-      try {
-        await signInAnonymously(auth);
-      } catch (err) {
-        // Se o banco falhar, força a liberação da tela para teste visual
-        setUser({ uid: 'demo-offline' }); 
-      }
-    };
+    const initAuth = async () => { try { await signInAnonymously(auth); } catch { setUser({ uid: 'demo-offline' }); } };
     initAuth();
     return onAuthStateChanged(auth, (u) => { if(u) setUser(u) });
   }, []);
@@ -93,19 +78,14 @@ function App() {
         setReservations(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
         setLoading(false);
       }, () => { setLoading(false); });
-    } catch {
-      setLoading(false);
-    }
+    } catch { setLoading(false); }
   }, [user]);
 
   const showToast = (message, type = 'success') => setToast({ message, type });
 
   const handleCreateReservation = async (data) => {
-    try {
-      await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'reservations'), { ...data, createdAt: new Date().toISOString() });
-      showToast("Agendamento confirmado!");
-      return true;
-    } catch { showToast("Erro (Modo Demonstração)", "error"); return false; }
+    try { await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'reservations'), { ...data, createdAt: new Date().toISOString() }); showToast("Agendamento confirmado!"); return true; } 
+    catch { showToast("Erro (Modo Demonstração)", "error"); return false; }
   };
 
   const handleDeleteReservation = async (id) => {
@@ -114,10 +94,8 @@ function App() {
   };
 
   const handleBlockTime = async (date, courtId, startTime, durationMins) => {
-    try {
-       await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'reservations'), { date, courtId, startTime, duration: durationMins, status: 'blocked', customerName: 'BLOQUEIO', customerPhone: '-', price: 0, createdAt: new Date().toISOString() });
-       showToast("Bloqueado.");
-    } catch { showToast("Erro.", "error"); }
+    try { await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'reservations'), { date, courtId, startTime, duration: durationMins, status: 'blocked', customerName: 'BLOQUEIO', customerPhone: '-', price: 0, sport: '-', createdAt: new Date().toISOString() }); showToast("Bloqueado."); } 
+    catch { showToast("Erro.", "error"); }
   };
 
   if (!user || loading) return <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center text-yellow-400"><RefreshCw className="animate-spin mb-4" size={48} /><h1 className="text-xl font-bold">CARREGANDO...</h1></div>;
@@ -185,9 +163,9 @@ const CustomerBookingScreen = ({ reservations, onSave, setView }) => {
     </div>
   );
 };
-
 const BookingFormModal = ({ date, courtId, startTime, onClose, onSave, reservations }) => {
   const [duration, setDuration] = useState(60);
+  const [sport, setSport] = useState(SPORTS[0]);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [obs, setObs] = useState('');
@@ -197,20 +175,20 @@ const BookingFormModal = ({ date, courtId, startTime, onClose, onSave, reservati
   const price = DURATIONS.find(d => d.value === duration).price;
   const courtName = COURTS.find(c => c.id === courtId)?.name;
   
-  const handleSubmit = async (e) => { e.preventDefault(); if(!name||!phone) return setError("Preencha nome e telefone."); if(!isDurationValid) return setError("Conflito de horário."); setIsSubmitting(true); const ok = await onSave({date, courtId, startTime, duration, customerName: name, customerPhone: phone, obs, price, status: 'reserved'}); if(ok) onClose(); setIsSubmitting(false); };
+  const handleSubmit = async (e) => { e.preventDefault(); if(!name||!phone) return setError("Preencha nome e telefone."); if(!isDurationValid) return setError("Conflito de horário."); setIsSubmitting(true); const ok = await onSave({date, courtId, startTime, duration, sport, customerName: name, customerPhone: phone, obs, price, status: 'reserved'}); if(ok) onClose(); setIsSubmitting(false); };
   
   return (
     <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-      <div className="bg-zinc-900 w-full max-w-md rounded-3xl p-6 border border-zinc-800">
+      <div className="bg-zinc-900 w-full max-w-md rounded-3xl p-6 border border-zinc-800 max-h-[95vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6"><h3 className="text-xl font-bold">Confirmar</h3><button onClick={onClose} className="p-2 bg-zinc-800 rounded-full"><X size={20}/></button></div>
-        <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-800 mb-6 space-y-3 text-sm text-zinc-300"><div className="flex items-center gap-2"><MapPin size={16} className="text-yellow-400"/> {courtName}</div><div className="flex items-center gap-2"><CalendarDays size={16} className="text-yellow-400"/> {date.split('-').reverse().join('/')}</div><div className="flex items-center gap-2"><Clock size={16} className="text-yellow-400"/> Início às {startTime}</div></div>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-2">{DURATIONS.map(d => <button key={d.value} type="button" onClick={() => setDuration(d.value)} className={`py-2 rounded-lg text-sm border font-medium ${duration===d.value?'bg-yellow-400 border-yellow-400 text-black':'bg-zinc-800 border-zinc-700 text-zinc-300'}`}>{d.label}</button>)}</div>
-          <input required type="text" placeholder="Nome" value={name} onChange={e => setName(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm focus:border-yellow-400 focus:outline-none"/>
-          <input required type="tel" placeholder="Telefone" value={phone} onChange={e => setPhone(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm focus:border-yellow-400 focus:outline-none"/>
-          <textarea placeholder="Obs" value={obs} onChange={e => setObs(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm focus:border-yellow-400 focus:outline-none"></textarea>
+        <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-800 mb-6 space-y-2 text-sm text-zinc-300"><div className="flex items-center gap-2"><MapPin size={16} className="text-yellow-400"/> {courtName}</div><div className="flex items-center gap-2"><CalendarDays size={16} className="text-yellow-400"/> {date.split('-').reverse().join('/')}</div><div className="flex items-center gap-2"><Clock size={16} className="text-yellow-400"/> Início às {startTime}</div></div>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div><label className="text-xs font-bold text-zinc-400 uppercase mb-1 block">Esporte / Modalidade</label><select value={sport} onChange={e=>setSport(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm focus:border-yellow-400 focus:outline-none">{SPORTS.map(s => <option key={s} value={s}>{s}</option>)}</select></div>
+          <div><label className="text-xs font-bold text-zinc-400 uppercase mb-1 block">Tempo de Quadra</label><div className="grid grid-cols-2 gap-2">{DURATIONS.map(d => <button key={d.value} type="button" onClick={() => setDuration(d.value)} className={`py-2 rounded-lg text-sm border font-medium ${duration===d.value?'bg-yellow-400 border-yellow-400 text-black':'bg-zinc-800 border-zinc-700 text-zinc-300'}`}>{d.label}</button>)}</div></div>
+          {!isDurationValid && <p className="text-red-400 text-xs mt-1 flex items-center gap-1"><AlertCircle size={14} /> Duração indisponível.</p>}
+          <div className="pt-2"><input required type="text" placeholder="Nome" value={name} onChange={e => setName(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm focus:border-yellow-400 focus:outline-none mb-2"/><input required type="tel" placeholder="Telefone" value={phone} onChange={e => setPhone(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm focus:border-yellow-400 focus:outline-none mb-2"/><textarea placeholder="Obs" value={obs} onChange={e => setObs(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm focus:border-yellow-400 focus:outline-none h-16"></textarea></div>
           {error && <div className="p-3 bg-red-500/20 text-red-400 text-sm rounded-lg border border-red-500/50">{error}</div>}
-          <div className="flex justify-between items-center pt-4 border-t border-zinc-800"><p className="text-2xl font-black text-yellow-400">{formatCurrency(price)}</p><button type="submit" disabled={!isDurationValid||isSubmitting} className="bg-white text-black font-bold py-3 px-6 rounded-xl disabled:opacity-50">Confirmar</button></div>
+          <div className="flex justify-between items-center pt-2 border-t border-zinc-800"><p className="text-2xl font-black text-yellow-400">{formatCurrency(price)}</p><button type="submit" disabled={!isDurationValid||isSubmitting} className="bg-white text-black font-bold py-3 px-6 rounded-xl disabled:opacity-50">Confirmar</button></div>
         </form>
       </div>
     </div>
@@ -218,13 +196,47 @@ const BookingFormModal = ({ date, courtId, startTime, onClose, onSave, reservati
 };
 
 const AdminDashboard = ({ reservations, onDelete, onBlock, setView }) => {
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const stats = useMemo(() => {
+    const todayStr = getDayString(new Date());
+    const startOfWeek = new Date(); startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+    const endOfWeek = new Date(startOfWeek); endOfWeek.setDate(startOfWeek.getDate() + 6);
+    let todayRev = 0, weekRev = 0, monthRev = 0, totalRes = 0; const courtCount = {}; COURTS.forEach(c => courtCount[c.id] = 0);
+    reservations.filter(r => r.status !== 'blocked').forEach(res => {
+      const resDate = new Date(res.date + 'T12:00:00'); const price = res.price || 0;
+      if (res.date === todayStr) todayRev += price;
+      if (resDate.getMonth() === new Date().getMonth() && resDate.getFullYear() === new Date().getFullYear()) { monthRev += price; totalRes++; if(courtCount[res.courtId] !== undefined) courtCount[res.courtId]++; }
+      if (resDate >= startOfWeek && resDate <= endOfWeek) weekRev += price;
+    });
+    return { todayRev, weekRev, monthRev, totalRes, courtCount };
+  }, [reservations]);
+
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-zinc-950">
-      <aside className="w-full md:w-64 bg-zinc-900 border-zinc-800 p-4 sticky top-0 z-20 flex justify-between items-center"><h1 className="font-black text-white">ARENA <span className="text-yellow-400">JD</span></h1><button onClick={() => setView('login')} className="text-zinc-400"><ArrowLeft size={16} /></button></aside>
-      <main className="flex-1 p-4"><AdminAgenda reservations={reservations} onDelete={onDelete} onBlock={onBlock} /></main>
+      <aside className="w-full md:w-64 bg-zinc-900 border-zinc-800 p-4 sticky top-0 z-20 flex md:flex-col justify-between items-start">
+        <div className="w-full flex justify-between items-center md:mb-8"><h1 className="font-black text-white text-xl">ARENA <span className="text-yellow-400">JD</span></h1><button onClick={() => setView('login')} className="text-zinc-400"><ArrowLeft size={20} /></button></div>
+        <nav className="hidden md:flex flex-col gap-2 w-full"><button onClick={() => setActiveTab('dashboard')} className={`flex gap-3 px-4 py-3 rounded-xl ${activeTab==='dashboard'?'bg-yellow-400 text-black font-bold':'text-zinc-400 hover:bg-zinc-800'}`}><BarChart3 size={20}/> Resumo</button><button onClick={() => setActiveTab('agenda')} className={`flex gap-3 px-4 py-3 rounded-xl ${activeTab==='agenda'?'bg-yellow-400 text-black font-bold':'text-zinc-400 hover:bg-zinc-800'}`}><CalendarDays size={20}/> Agenda</button></nav>
+      </aside>
+      <div className="md:hidden flex gap-2 p-4 bg-zinc-900 border-b border-zinc-800 overflow-x-auto"><button onClick={() => setActiveTab('dashboard')} className={`px-4 py-2 rounded-xl whitespace-nowrap text-sm font-bold ${activeTab==='dashboard'?'bg-yellow-400 text-black':'bg-zinc-800 text-zinc-400'}`}>Resumo Financeiro</button><button onClick={() => setActiveTab('agenda')} className={`px-4 py-2 rounded-xl whitespace-nowrap text-sm font-bold ${activeTab==='agenda'?'bg-yellow-400 text-black':'bg-zinc-800 text-zinc-400'}`}>Agenda Completa</button></div>
+      <main className="flex-1 p-4 md:p-8 overflow-y-auto">{activeTab === 'dashboard' ? <AdminOverview stats={stats} /> : <AdminAgenda reservations={reservations} onDelete={onDelete} onBlock={onBlock} />}</main>
     </div>
   );
 };
+
+const AdminOverview = ({ stats }) => (
+  <div className="space-y-6">
+    <h2 className="text-2xl font-bold">Resumo Financeiro</h2>
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl"><div className="flex items-center gap-3 text-zinc-400 mb-2 font-medium"><DollarSign size={18} className="text-yellow-400"/> Hoje</div><div className="text-3xl font-black">{formatCurrency(stats.todayRev)}</div></div>
+      <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl"><div className="flex items-center gap-3 text-zinc-400 mb-2 font-medium"><TrendingUp size={18} className="text-green-400"/> Semana</div><div className="text-3xl font-black">{formatCurrency(stats.weekRev)}</div></div>
+      <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl border-l-4 border-l-yellow-400"><div className="flex items-center gap-3 text-zinc-400 mb-2 font-medium"><Activity size={18} className="text-blue-400"/> Mês</div><div className="text-3xl font-black">{formatCurrency(stats.monthRev)}</div></div>
+    </div>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
+      <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl"><h3 className="font-bold mb-4 flex gap-2"><MapPin className="text-yellow-400"/> Reservas por Quadra</h3><div className="space-y-4">{COURTS.map(court => { const count = stats.courtCount[court.id] || 0; const pct = stats.totalRes ? Math.round((count/stats.totalRes)*100) : 0; return <div key={court.id}><div className="flex justify-between text-sm mb-1"><span className="text-zinc-300">{court.name}</span><span className="font-bold">{count} ({pct}%)</span></div><div className="w-full bg-zinc-950 rounded-full h-2"><div className="bg-yellow-400 h-2 rounded-full" style={{width:`${pct}%`}}></div></div></div> })}</div></div>
+      <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl flex flex-col justify-center items-center text-center"><Users size={48} className="text-zinc-700 mb-4" /><h3 className="font-bold text-zinc-300 mb-1">Total de Agendamentos (Mês)</h3><p className="text-5xl font-black text-white">{stats.totalRes}</p></div>
+    </div>
+  </div>
+);
 
 const AdminAgenda = ({ reservations, onDelete, onBlock }) => {
   const [filterDate, setFilterDate] = useState(getDayString(new Date()));
@@ -242,6 +254,7 @@ const AdminAgenda = ({ reservations, onDelete, onBlock }) => {
               <div className="p-2 space-y-2">{courtRes.length === 0 ? <p className="text-zinc-600 text-xs text-center p-4">Livre</p> : courtRes.map(res => (
                 <div key={res.id} className={`p-3 rounded-xl border text-sm relative group ${res.status==='blocked'?'bg-zinc-950 border-red-900/50':'bg-zinc-950 border-zinc-800'}`}>
                   <div className="flex justify-between mb-1"><span className={`font-bold ${res.status==='blocked'?'text-red-400':'text-yellow-400'}`}>{res.startTime} <span className="text-xs font-normal text-zinc-500">({res.duration}m)</span></span>{res.status!=='blocked' && <span className="text-green-400 font-bold">{formatCurrency(res.price)}</span>}</div>
+                  {res.status !== 'blocked' && <p className="text-[10px] text-yellow-400 uppercase font-bold tracking-wider mb-1">{res.sport}</p>}
                   <p className="font-medium truncate">{res.customerName}</p>{res.status!=='blocked' && <p className="text-xs text-zinc-500">{res.customerPhone}</p>}
                   <button onClick={() => { if(window.confirm('Excluir este agendamento?')) onDelete(res.id) }} className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-lg"><Trash2 size={14}/></button>
                 </div>
@@ -263,7 +276,7 @@ const AdminBlockModal = ({ date, onClose, onBlock, reservations }) => {
   return (
     <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
       <div className="bg-zinc-900 w-full max-w-sm rounded-3xl p-6 border border-red-900/50">
-        <h3 className="text-xl font-bold mb-4 text-red-400 flex items-center gap-2"><Lock size={20}/> Bloquear</h3>
+        <h3 className="text-xl font-bold mb-4 text-red-400 flex items-center gap-2"><Lock size={20}/> Bloquear Horário</h3>
         <form onSubmit={handleBlock} className="space-y-4">
           <select value={courtId} onChange={e=>setCourtId(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-sm">{COURTS.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
           <div className="grid grid-cols-2 gap-3"><select value={startTime} onChange={e=>setStartTime(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-sm">{TIME_SLOTS.map(t => <option key={t} value={t}>{t}</option>)}</select><select value={duration} onChange={e=>setDuration(Number(e.target.value))} className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-sm">{DURATIONS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}</select></div>
@@ -274,8 +287,5 @@ const AdminBlockModal = ({ date, onClose, onBlock, reservations }) => {
   )
 }
 
-// MOTOR DE RENDERIZAÇÃO
 const rootElement = document.getElementById('root');
-if (rootElement) {
-  createRoot(rootElement).render(<App />);
-}
+if (rootElement) createRoot(rootElement).render(<App />);
