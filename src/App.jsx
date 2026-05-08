@@ -522,5 +522,14 @@ const BookingFormModal = ({ date, courtId, startTime, onClose, onSave, reservati
           <div className="flex items-center text-zinc-300 gap-2"><CalendarDays size={16} className="text-yellow-400"/> {date.split('-').reverse().join('/')}</div>
           <div className="flex items-center text-zinc-300 gap-2"><Clock size={16} className="text-yellow-400"/> Início às {startTime}</div>
         </div>
+          <div className="flex gap-3 pt-4">
+            <button type="button" onClick={onClose} className="flex-1 border border-zinc-800 py-3 rounded-xl hover:bg-zinc-800 font-medium">Cancelar</button>
+            <button type="submit" className="flex-1 bg-red-500 text-white py-3 rounded-xl hover:bg-red-600 font-bold">Bloquear</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
 
      
