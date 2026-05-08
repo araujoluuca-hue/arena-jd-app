@@ -102,7 +102,7 @@ export default function App() {
     catch { showToast("Erro ao remover.", "error"); }
   };
 
-  if (loading) return <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center text-[#F58021]"><RefreshCw className="animate-spin mb-4" size={48} /><h1 className="text-xl font-bold uppercase tracking-widest">Arena JD</h1></div>;
+  if (loading) return <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center text-[#F58021]"><RefreshCw className="animate-spin mb-4" size={48} /><h1 className="text-xl font-bold uppercase tracking-widest text-white">Arena JD</h1></div>;
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-50 font-sans">
@@ -119,7 +119,7 @@ const LoginScreen = ({ setView }) => (
     <div className="max-w-md w-full text-center">
       <img src="https://i.postimg.cc/j21g4jhM/Screenshot-20260508-202911-Instagram-2.jpg" alt="Arena JD" className="w-48 h-48 mx-auto mb-6 rounded-full object-cover shadow-[0_0_30px_rgba(90,44,129,0.4)] border-4 border-[#5A2C81]" />
       <h1 className="text-4xl font-black text-white uppercase mb-10 tracking-tighter">Arena <span className="text-[#F58021]">JD</span></h1>
-      <button onClick={() => setView('customer')} className="w-full bg-[#F58021] text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-3 mb-4 shadow-xl shadow-[#F58021]/20 transform active:scale-95 transition-all"><Calendar size={24} />AGENDAR HORÁRIO</button>
+      <button onClick={() => setView('customer')} className="w-full bg-[#F58021] text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-3 mb-4 shadow-xl shadow-[#F58021]/20 active:scale-95 transition-all"><Calendar size={24} />AGENDAR HORÁRIO</button>
       <button onClick={() => setView('admin_login')} className="w-full bg-zinc-900 border border-[#5A2C81] text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-3 active:bg-zinc-800 transition-all"><Lock size={20} className="text-[#F58021]" />ACESSO RESTRITO</button>
     </div>
   </div>
@@ -147,7 +147,23 @@ const CustomerBookingScreen = ({ reservations, onSave, setView }) => {
   const [selectedDate, setSelectedDate] = useState(getDayString(new Date()));
   const [selectedCourt, setSelectedCourt] = useState(COURTS[0].id);
   const [bookingModalInfo, setBookingModalInfo] = useState(null);
-  const getNextDays = () => Array.from({length:14}, (_,i) => { const d=new Date(); d.setDate(d.getDate()+i); return { full: getDayString(d), dayNum: d.getDate(), dayWeek: d.toLocaleDateString('pt-BR',{weekday:'short'}).toUpperCase().replace('.','') }; });
+
+  const getCalendarDays = () => {
+    return Array.from({length: 60}, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() + i);
+      return {
+        full: getDayString(d),
+        dayNum: d.getDate(),
+        dayWeek: d.toLocaleDateString('pt-BR', {weekday: 'short'}).toUpperCase().replace('.', ''),
+        month: d.toLocaleDateString('pt-BR', {month: 'long'}).toUpperCase()
+      };
+    });
+  };
+
+  const days = getCalendarDays();
+  const currentMonth = days.find(d => d.full === selectedDate)?.month;
+
   return (
     <div className="pb-24">
       <header className="sticky top-0 bg-zinc-950/90 border-b border-zinc-900 z-30 px-4 py-4 flex items-center gap-3 backdrop-blur-md">
@@ -155,15 +171,32 @@ const CustomerBookingScreen = ({ reservations, onSave, setView }) => {
         <h1 className="text-lg font-black uppercase tracking-tight">Arena <span className="text-[#F58021]">JD</span></h1>
       </header>
       <main className="max-w-3xl mx-auto p-4 space-y-8 mt-4">
-        <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide snap-x">
-          {getNextDays().map(day => <button key={day.full} onClick={() => setSelectedDate(day.full)} className={`snap-center flex-shrink-0 w-20 py-3 rounded-2xl border transition-all ${selectedDate===day.full?'bg-[#F58021] border-[#F58021] text-white shadow-lg shadow-[#F58021]/20':'bg-zinc-900 border-zinc-800 text-zinc-500'}`}><span className="text-[10px] font-bold block mb-1">{day.dayWeek}</span><span className="text-xl font-black">{day.dayNum}</span></button>)}
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {COURTS.map(court => <button key={court.id} onClick={() => setSelectedCourt(court.id)} className={`p-4 rounded-xl border text-left flex justify-between items-center transition-all ${selectedCourt===court.id?'bg-zinc-800 border-[#F58021] shadow-md':'bg-zinc-900 border-zinc-800'}`}><span className="font-bold text-sm">{court.name}</span>{selectedCourt===court.id && <CheckCircle size={18} className="text-[#F58021]"/>}</button>)}
-        </div>
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
-          {TIME_SLOTS.map(time => { const isAvail = checkAvailability(selectedDate, selectedCourt, time, 30, reservations); return <button key={time} disabled={!isAvail} onClick={() => setBookingModalInfo({time})} className={`py-3 rounded-xl border text-sm font-bold relative overflow-hidden transition-all ${isAvail?'bg-zinc-900 border-zinc-700 hover:border-[#5A2C81]':'bg-zinc-950 border-zinc-900 text-zinc-800 opacity-50'}`}>{time}{!isAvail && <div className="absolute inset-0 flex items-center justify-center bg-zinc-950/80"><Lock size={14}/></div>}</button> })}
-        </div>
+        <section>
+          <div className="flex items-center justify-between mb-3">
+             <h2 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2"><CalendarDays size={14}/> Selecione a Data</h2>
+             <span className="text-[10px] font-black text-[#F58021]">{currentMonth}</span>
+          </div>
+          <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide snap-x">
+            {days.map(day => (
+              <button key={day.full} onClick={() => setSelectedDate(day.full)} className={`snap-center flex-shrink-0 w-16 py-3 rounded-2xl border transition-all ${selectedDate===day.full?'bg-[#F58021] border-[#F58021] text-white shadow-lg shadow-[#F58021]/20':'bg-zinc-900 border-zinc-800 text-zinc-500'}`}>
+                <span className="text-[9px] font-bold block mb-1">{day.dayWeek}</span>
+                <span className="text-lg font-black">{day.dayNum}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+        <section className="space-y-3">
+          <h2 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2"><MapPin size={14}/> Selecione a Quadra</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {COURTS.map(court => <button key={court.id} onClick={() => setSelectedCourt(court.id)} className={`p-4 rounded-xl border text-left flex justify-between items-center transition-all ${selectedCourt===court.id?'bg-zinc-800 border-[#F58021] shadow-md':'bg-zinc-900 border-zinc-800'}`}><span className="font-bold text-sm">{court.name}</span>{selectedCourt===court.id && <CheckCircle size={18} className="text-[#F58021]"/>}</button>)}
+          </div>
+        </section>
+        <section className="space-y-3">
+          <h2 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2"><Clock size={14}/> Horários Disponíveis</h2>
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+            {TIME_SLOTS.map(time => { const isAvail = checkAvailability(selectedDate, selectedCourt, time, 30, reservations); return <button key={time} disabled={!isAvail} onClick={() => setBookingModalInfo({time})} className={`py-3 rounded-xl border text-sm font-bold relative overflow-hidden transition-all ${isAvail?'bg-zinc-900 border-zinc-700 hover:border-[#5A2C81]':'bg-zinc-950 border-zinc-900 text-zinc-800 opacity-50'}`}>{time}{!isAvail && <div className="absolute inset-0 flex items-center justify-center bg-zinc-950/80"><Lock size={14}/></div>}</button> })}
+          </div>
+        </section>
       </main>
       {bookingModalInfo && <BookingFormModal date={selectedDate} courtId={selectedCourt} startTime={bookingModalInfo.time} onClose={() => setBookingModalInfo(null)} onSave={onSave} reservations={reservations} />}
     </div>
@@ -247,7 +280,7 @@ const AdminEnrModal = ({ onSave, onClose }) => {
           <input required type="text" placeholder="Nome" value={name} onChange={e => setName(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#F58021]"/>
           <input required type="tel" placeholder="WhatsApp" value={phone} onChange={e => setPhone(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#F58021]"/>
           <div><label className="text-[10px] font-bold text-zinc-500 uppercase mb-2 block">Plano</label><div className="grid grid-cols-1 gap-2">{PLANS.map((p, i) => <button key={i} type="button" onClick={() => setPlanIdx(i)} className={`p-3 rounded-xl border text-left flex justify-between items-center ${planIdx===i?'bg-zinc-800 border-[#5A2C81] text-white':'bg-zinc-950 border-zinc-800 text-zinc-500'}`}><span className="text-xs font-bold">{p.name}</span><span className="text-xs">{formatCurrency(p.price)}</span></button>)}</div></div>
-          <div><label className="text-[10px] font-bold text-zinc-500 mb-2 block">PAGAMENTO</label><select value={payment} onChange={e=>setPayment(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#F58021]">{PAYMENTS.map(p => <option key={p} value={p}>{p}</option>)}</select></div>
+          <div><label className="text-[10px] font-bold text-zinc-500 mb-2 block uppercase tracking-widest">Pagamento</label><select value={payment} onChange={e=>setPayment(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#F58021]">{PAYMENTS.map(p => <option key={p} value={p}>{p}</option>)}</select></div>
           <div className="flex gap-2 pt-4"><button type="button" onClick={onClose} className="flex-1 py-3 border border-zinc-800 rounded-xl text-zinc-500">Voltar</button><button type="submit" className="flex-1 bg-[#5A2C81] text-white py-3 rounded-xl font-bold">SALVAR</button></div>
         </form>
       </div>
@@ -264,8 +297,8 @@ const AdminOverview = ({ stats, enrollments, reservations }) => (
       <div className="bg-[#5A2C81]/10 border border-[#5A2C81]/30 p-6 rounded-2xl"><p className="text-[10px] font-bold text-[#F58021] uppercase mb-2 tracking-widest">Receita Total Bruta</p><p className="text-4xl font-black text-white">{formatCurrency(stats.total)}</p></div>
     </div>
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
-      <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl"><h3 className="font-bold mb-4 flex gap-2"><Activity className="text-[#F58021]"/> Ranking por Quadra</h3><div className="space-y-4">{COURTS.map(court => { let count = 0; reservations.filter(r => r.courtId === court.id && r.status !== 'blocked').forEach(r => count += (r.price || 0)); const pct = stats.resTotal ? Math.round((count/stats.resTotal)*100) : 0; return <div key={court.id}><div className="flex justify-between text-xs mb-1"><span className="text-zinc-400 font-bold">{court.name}</span><span className="font-bold text-yellow-500">{formatCurrency(count)}</span></div><div className="w-full bg-zinc-950 rounded-full h-1.5"><div className="bg-[#F58021] h-1.5 rounded-full" style={{width:`${pct}%`}}></div></div></div> })}</div></div>
-      <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl flex flex-col justify-center items-center text-center"><Users size={48} className="text-zinc-800 mb-4" /><h3 className="font-bold text-zinc-400 mb-1">Total de Alunos: {enrollments.length}</h3><p className="text-xs text-zinc-600">Base ativa na Arena JD</p></div>
+      <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl"><h3 className="font-bold mb-4 flex gap-2"><Activity className="text-[#F58021]"/> Ranking por Quadra</h3><div className="space-y-4">{COURTS.map(court => { let count = 0; reservations.filter(r => r.courtId === court.id && r.status !== 'blocked').forEach(r => count += (r.price || 0)); const pct = stats.resTotal ? Math.round((count/stats.resTotal)*100) : 0; return <div key={court.id}><div className="flex justify-between text-xs mb-1"><span className="text-zinc-400 font-bold">{court.name}</span><span className="font-bold text-[#F58021]">{formatCurrency(count)}</span></div><div className="w-full bg-zinc-950 rounded-full h-1.5"><div className="bg-[#F58021] h-1.5 rounded-full" style={{width:`${pct}%`}}></div></div></div> })}</div></div>
+      <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl flex flex-col justify-center items-center text-center"><Users size={48} className="text-zinc-800 mb-4" /><h3 className="font-bold text-zinc-400 mb-1 tracking-widest">TOTAL DE ALUNOS: {enrollments.length}</h3></div>
     </div>
   </div>
 );
@@ -276,7 +309,7 @@ const AdminAgenda = ({ reservations, onDelete, onBlock }) => {
   const daily = reservations.filter(r => r.date === filterDate).sort((a,b) => a.startTime.localeCompare(b.startTime));
   return (
     <div className="space-y-6 pb-20">
-      <div className="flex justify-between items-center gap-4"><input type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} className="bg-zinc-900 text-white border border-zinc-800 px-4 py-2 rounded-xl outline-none focus:border-[#F58021] text-xs" /><button onClick={() => setIsBlocking(true)} className="bg-red-500/10 text-red-500 px-4 py-2 rounded-xl flex items-center gap-2 border border-red-500/20 text-[10px] font-bold uppercase"><Lock size={14}/>Bloquear</button></div>
+      <div className="flex justify-between items-center gap-4"><input type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} className="bg-zinc-900 text-white border border-zinc-800 px-4 py-2 rounded-xl focus:border-[#F58021] text-xs outline-none" /><button onClick={() => setIsBlocking(true)} className="bg-red-500/10 text-red-500 px-4 py-2 rounded-xl flex items-center gap-2 border border-red-500/20 text-[10px] font-bold uppercase"><Lock size={14}/>Bloquear</button></div>
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         {COURTS.map(court => {
           const courtRes = daily.filter(r => r.courtId === court.id);
@@ -284,7 +317,7 @@ const AdminAgenda = ({ reservations, onDelete, onBlock }) => {
             <div key={court.id} className="bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-800">
               <div className="bg-zinc-800/50 p-3 text-center text-[10px] font-black uppercase border-b border-zinc-800 text-zinc-400 tracking-tighter">{court.name}</div>
               <div className="p-2 space-y-2">{courtRes.length === 0 ? <p className="text-zinc-800 text-[10px] text-center py-6 font-bold uppercase italic tracking-widest">Livre</p> : courtRes.map(res => (
-                <div key={res.id} className={`p-3 rounded-xl border text-sm relative group ${res.status==='blocked'?'bg-zinc-950 border-red-900/30':'bg-zinc-950 border-zinc-800 hover:border-[#5A2C81]'}`}>
+                <div key={res.id} className={`p-3 rounded-xl border text-sm relative group ${res.status==='blocked'?'bg-zinc-950 border-red-900/30':'bg-zinc-950 border-zinc-800'}`}>
                   <div className="flex justify-between items-center mb-1"><span className={`font-bold ${res.status==='blocked'?'text-red-400':'text-[#F58021]'}`}>{res.startTime}</span>{res.status!=='blocked' && <span className="text-[9px] font-black bg-zinc-800 px-1 rounded text-zinc-500">{res.payment}</span>}</div>
                   {res.status !== 'blocked' && <p className="text-[9px] text-[#5A2C81] uppercase font-black mb-1">{res.sport}</p>}
                   <p className="font-bold text-zinc-300 truncate tracking-tight">{res.customerName}</p>
@@ -298,10 +331,10 @@ const AdminAgenda = ({ reservations, onDelete, onBlock }) => {
       {isBlocking && (
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
           <div className="bg-zinc-900 w-full max-w-sm rounded-3xl p-6 border border-red-900/30">
-            <h3 className="text-xl font-bold mb-4 text-red-500 flex items-center gap-2 uppercase italic tracking-tighter"><Lock size={20}/> Bloqueio Adm</h3>
+            <h3 className="text-xl font-bold mb-4 text-red-500 flex items-center gap-2 uppercase tracking-tighter"><Lock size={20}/> Bloqueio Adm</h3>
             <div className="space-y-4">
-              <select id="blCourt" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-sm text-white">{COURTS.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
-              <div className="grid grid-cols-2 gap-3"><select id="blTime" className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-sm text-white">{TIME_SLOTS.map(t => <option key={t} value={t}>{t}</option>)}</select><select id="blDur" className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-sm text-white">{DURATIONS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}</select></div>
+              <select id="blCourt" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-sm text-white outline-none">{COURTS.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+              <div className="grid grid-cols-2 gap-3"><select id="blTime" className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-sm text-white outline-none">{TIME_SLOTS.map(t => <option key={t} value={t}>{t}</option>)}</select><select id="blDur" className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-sm text-white outline-none">{DURATIONS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}</select></div>
               <div className="flex gap-2 pt-4"><button onClick={()=>setIsBlocking(false)} className="flex-1 py-3 border border-zinc-800 rounded-xl font-bold text-zinc-500">VOLTAR</button><button onClick={()=>{
                 const c = document.getElementById('blCourt').value; const t = document.getElementById('blTime').value; const d = Number(document.getElementById('blDur').value);
                 onBlock({ date: filterDate, courtId: c, startTime: t, duration: d, status: 'blocked', customerName: 'BLOQUEIO', customerPhone: '-', price: 0, sport: '-' }); setIsBlocking(false);
