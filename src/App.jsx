@@ -9,10 +9,7 @@ import {
 } from 'lucide-react';
 
 // --- FIREBASE SETUP ---
-// Configuração utilizando as globais do ambiente para garantir o funcionamento do banco
-const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-  // Fallback configurado para execução local se necessário
-};
+const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -35,7 +32,6 @@ const DURATIONS = [
   { label: '3 Horas', value: 180, price: 120 },
 ];
 
-// Gera os horários das 05:00 até 23:00
 const generateTimeSlots = () => {
   const slots = [];
   for (let i = 5 * 60; i < 23 * 60; i += 30) {
@@ -59,7 +55,6 @@ const formatCurrency = (value) => {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 };
 
-// Verifica intersecção de horários para evitar conflitos
 const checkAvailability = (date, courtId, startTimeStr, durationMins, allReservations, ignoreResId = null) => {
   const startMins = parseInt(startTimeStr.split(':')[0]) * 60 + parseInt(startTimeStr.split(':')[1]);
   const endMins = startMins + durationMins;
@@ -69,14 +64,12 @@ const checkAvailability = (date, courtId, startTimeStr, durationMins, allReserva
   for (const res of dayRes) {
     const resStartMins = parseInt(res.startTime.split(':')[0]) * 60 + parseInt(res.startTime.split(':')[1]);
     const resEndMins = resStartMins + res.duration;
-    // Lógica de colisão de intervalos
     if (Math.max(startMins, resStartMins) < Math.min(endMins, resEndMins)) {
-      return false; // Há conflito
+      return false;
     }
   }
-  return true; // Disponível
+  return true;
 };
-
 
 // --- COMPONENTES DA UI ---
 const Toast = ({ message, type, onClose }) => {
@@ -95,15 +88,13 @@ const Toast = ({ message, type, onClose }) => {
   );
 };
 
-
 export default function App() {
   const [user, setUser] = useState(null);
-  const [view, setView] = useState('login'); // 'login', 'customer', 'admin_login', 'admin_dashboard'
+  const [view, setView] = useState('login');
   const [reservations, setReservations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
 
-  // --- AUTENTICAÇÃO E FIREBASE SYNC ---
   useEffect(() => {
     const initAuth = async () => {
       try {
@@ -145,7 +136,6 @@ export default function App() {
     setToast({ message, type });
   };
 
-  // --- ACTIONS DE BANCO DE DADOS ---
   const handleCreateReservation = async (reservationData) => {
     try {
       const reservationsRef = collection(db, 'artifacts', appId, 'public', 'data', 'reservations');
@@ -192,8 +182,6 @@ export default function App() {
     }
   };
 
-  // --- TELAS PRINCIPAIS ---
-
   if (!user || loading) {
     return (
       <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center text-yellow-400">
@@ -210,24 +198,14 @@ export default function App() {
       {view === 'login' && <LoginScreen setView={setView} />}
       {view === 'admin_login' && <AdminLoginScreen setView={setView} showToast={showToast} />}
       {view === 'customer' && (
-        <CustomerBookingScreen 
-          reservations={reservations} 
-          onSave={handleCreateReservation} 
-          setView={setView} 
-        />
+        <CustomerBookingScreen reservations={reservations} onSave={handleCreateReservation} setView={setView} />
       )}
       {view === 'admin_dashboard' && (
-        <AdminDashboard 
-          reservations={reservations} 
-          onDelete={handleDeleteReservation}
-          onBlock={handleBlockTime}
-          setView={setView} 
-        />
+        <AdminDashboard reservations={reservations} onDelete={handleDeleteReservation} onBlock={handleBlockTime} setView={setView} />
       )}
     </div>
   );
 }
-
 
 // ============================================================================
 // LOGIN SCREENS
@@ -272,7 +250,6 @@ const AdminLoginScreen = ({ setView, showToast }) => {
 
   const handleLogin = (e) => {
     e.preventDefault();
-    // Autenticação simplificada para o escopo do app único
     if (pwd === 'admin123') {
       setView('admin_dashboard');
       showToast('Bem-vindo, Administrador!');
@@ -316,7 +293,6 @@ const AdminLoginScreen = ({ setView, showToast }) => {
   );
 };
 
-
 // ============================================================================
 // CUSTOMER BOOKING SCREEN
 // ============================================================================
@@ -324,9 +300,8 @@ const AdminLoginScreen = ({ setView, showToast }) => {
 const CustomerBookingScreen = ({ reservations, onSave, setView }) => {
   const [selectedDate, setSelectedDate] = useState(getDayString(new Date()));
   const [selectedCourt, setSelectedCourt] = useState(COURTS[0].id);
-  const [bookingModalInfo, setBookingModalInfo] = useState(null); // { time }
+  const [bookingModalInfo, setBookingModalInfo] = useState(null);
 
-  // Geração de calendário horizontal
   const getNextDays = () => {
     const days = [];
     const today = new Date();
@@ -349,7 +324,6 @@ const CustomerBookingScreen = ({ reservations, onSave, setView }) => {
 
   return (
     <div className="pb-24">
-      {/* Header */}
       <header className="sticky top-0 bg-zinc-950/90 backdrop-blur-md border-b border-zinc-900 z-30 px-4 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button onClick={() => setView('login')} className="p-2 bg-zinc-900 rounded-full text-zinc-400 hover:text-white transition">
@@ -363,8 +337,6 @@ const CustomerBookingScreen = ({ reservations, onSave, setView }) => {
       </header>
 
       <main className="max-w-3xl mx-auto p-4 space-y-8 mt-4">
-        
-        {/* Date Selector */}
         <section>
           <h2 className="text-sm font-bold text-zinc-400 mb-3 flex items-center gap-2 uppercase tracking-wider">
             <CalendarDays size={16} /> 1. Escolha a Data
@@ -387,7 +359,6 @@ const CustomerBookingScreen = ({ reservations, onSave, setView }) => {
           </div>
         </section>
 
-        {/* Court Selector */}
         <section>
           <h2 className="text-sm font-bold text-zinc-400 mb-3 flex items-center gap-2 uppercase tracking-wider">
             <MapPin size={16} /> 2. Escolha a Quadra
@@ -410,17 +381,13 @@ const CustomerBookingScreen = ({ reservations, onSave, setView }) => {
           </div>
         </section>
 
-        {/* Time Slots */}
         <section>
            <h2 className="text-sm font-bold text-zinc-400 mb-3 flex items-center gap-2 uppercase tracking-wider">
             <Clock size={16} /> 3. Horários Disponíveis
           </h2>
-          
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
             {TIME_SLOTS.map(time => {
-              // Verifica se este bloco específico de 30 min está livre
               const isAvailable = checkAvailability(selectedDate, selectedCourt, time, 30, reservations);
-              
               return (
                 <button
                   key={time}
@@ -445,7 +412,6 @@ const CustomerBookingScreen = ({ reservations, onSave, setView }) => {
         </section>
       </main>
 
-      {/* Modal de Confirmação */}
       {bookingModalInfo && (
         <BookingFormModal 
           date={selectedDate}
@@ -460,17 +426,15 @@ const CustomerBookingScreen = ({ reservations, onSave, setView }) => {
   );
 };
 
-
 const BookingFormModal = ({ date, courtId, startTime, onClose, onSave, reservations }) => {
   const courtName = COURTS.find(c => c.id === courtId)?.name;
-  const [duration, setDuration] = useState(60); // Default 1 hr
+  const [duration, setDuration] = useState(60);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [obs, setObs] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  // Validate if the selected duration is available starting from `startTime`
   const isDurationValid = useMemo(() => {
     return checkAvailability(date, courtId, startTime, duration, reservations);
   }, [date, courtId, startTime, duration, reservations]);
@@ -508,7 +472,6 @@ const BookingFormModal = ({ date, courtId, startTime, onClose, onSave, reservati
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in">
       <div className="bg-zinc-900 w-full max-w-md sm:rounded-3xl rounded-t-3xl p-6 shadow-2xl border border-zinc-800 h-[90vh] sm:h-auto overflow-y-auto">
-        
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-xl font-bold">Confirmar Reserva</h3>
           <button onClick={onClose} className="p-2 bg-zinc-800 rounded-full hover:bg-zinc-700">
@@ -516,20 +479,34 @@ const BookingFormModal = ({ date, courtId, startTime, onClose, onSave, reservati
           </button>
         </div>
 
-        {/* Resumo */}
         <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-800 mb-6 space-y-3 text-sm">
           <div className="flex items-center text-zinc-300 gap-2"><MapPin size={16} className="text-yellow-400"/> {courtName}</div>
           <div className="flex items-center text-zinc-300 gap-2"><CalendarDays size={16} className="text-yellow-400"/> {date.split('-').reverse().join('/')}</div>
           <div className="flex items-center text-zinc-300 gap-2"><Clock size={16} className="text-yellow-400"/> Início às {startTime}</div>
         </div>
-          <div className="flex gap-3 pt-4">
-            <button type="button" onClick={onClose} className="flex-1 border border-zinc-800 py-3 rounded-xl hover:bg-zinc-800 font-medium">Cancelar</button>
-            <button type="submit" className="flex-1 bg-red-500 text-white py-3 rounded-xl hover:bg-red-600 font-bold">Bloquear</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
-}
 
-     
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-zinc-400 text-xs font-bold uppercase mb-2">Duração da Reserva</label>
+            <div className="grid grid-cols-2 gap-2">
+              {DURATIONS.map(d => (
+                <button
+                  key={d.value}
+                  type="button"
+                  onClick={() => setDuration(d.value)}
+                  className={`py-2 rounded-lg text-sm border font-medium transition-all ${
+                    duration === d.value 
+                    ? 'bg-yellow-400 border-yellow-400 text-black' 
+                    : 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:border-zinc-500'
+                  }`}
+                >
+                  {d.label}
+                </button>
+              ))}
+            </div>
+            {!isDurationValid && (
+              <p className="text-red-400 text-xs mt-2 flex items-center gap-1">
+                <AlertCircle size={14} /> Duração indisponível. Conflito de horário.
+              </p>
+            )}
+ 
