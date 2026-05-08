@@ -207,10 +207,6 @@ export default function App() {
   );
 }
 
-// ============================================================================
-// LOGIN SCREENS
-// ============================================================================
-
 const LoginScreen = ({ setView }) => {
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
@@ -292,10 +288,6 @@ const AdminLoginScreen = ({ setView, showToast }) => {
     </div>
   );
 };
-
-// ============================================================================
-// CUSTOMER BOOKING SCREEN
-// ============================================================================
 
 const CustomerBookingScreen = ({ reservations, onSave, setView }) => {
   const [selectedDate, setSelectedDate] = useState(getDayString(new Date()));
@@ -423,10 +415,7 @@ const CustomerBookingScreen = ({ reservations, onSave, setView }) => {
         />
       )}
     </div>
-  );
-};
-
-const BookingFormModal = ({ date, courtId, startTime, onClose, onSave, reservations }) => {
+    const BookingFormModal = ({ date, courtId, startTime, onClose, onSave, reservations }) => {
   const courtName = COURTS.find(c => c.id === courtId)?.name;
   const [duration, setDuration] = useState(60);
   const [name, setName] = useState('');
@@ -509,4 +498,320 @@ const BookingFormModal = ({ date, courtId, startTime, onClose, onSave, reservati
                 <AlertCircle size={14} /> Duração indisponível. Conflito de horário.
               </p>
             )}
- 
+          </div>
+
+          <div>
+            <label className="block text-zinc-400 text-xs font-bold uppercase mb-2 mt-4">Seus Dados</label>
+            <input 
+              required
+              type="text" placeholder="Nome Completo" 
+              value={name} onChange={e => setName(e.target.value)}
+              className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 mb-3 focus:outline-none focus:border-yellow-400 text-sm"
+            />
+            <input 
+              required
+              type="tel" placeholder="WhatsApp / Telefone" 
+              value={phone} onChange={e => setPhone(e.target.value)}
+              className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 mb-3 focus:outline-none focus:border-yellow-400 text-sm"
+            />
+            <textarea 
+              placeholder="Observação (Opcional)" 
+              value={obs} onChange={e => setObs(e.target.value)}
+              className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 h-20 resize-none focus:outline-none focus:border-yellow-400 text-sm"
+            ></textarea>
+          </div>
+
+          {error && <div className="p-3 bg-red-500/20 text-red-400 text-sm rounded-lg border border-red-500/50">{error}</div>}
+
+          <div className="pt-4 mt-2 border-t border-zinc-800 flex items-center justify-between">
+            <div>
+              <p className="text-zinc-500 text-xs font-bold uppercase">Total a pagar</p>
+              <p className="text-2xl font-black text-yellow-400">{formatCurrency(selectedDurationData.price)}</p>
+            </div>
+            <button 
+              type="submit" 
+              disabled={!isDurationValid || isSubmitting}
+              className="bg-white text-black font-bold py-3 px-6 rounded-xl hover:bg-zinc-200 disabled:opacity-50 transition-all flex items-center gap-2"
+            >
+              {isSubmitting ? <RefreshCw size={20} className="animate-spin" /> : 'Confirmar'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+const AdminDashboard = ({ reservations, onDelete, onBlock, setView }) => {
+  const [activeTab, setActiveTab] = useState('dashboard');
+
+  const stats = useMemo(() => {
+    const todayStr = getDayString(new Date());
+    const todayObj = new Date();
+    const currentMonth = todayObj.getMonth();
+    const currentYear = todayObj.getFullYear();
+    const startOfWeek = new Date(todayObj);
+    startOfWeek.setDate(todayObj.getDate() - todayObj.getDay());
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+
+    let todayRev = 0, weekRev = 0, monthRev = 0, totalRes = 0;
+    const courtCount = {};
+    COURTS.forEach(c => courtCount[c.id] = 0);
+
+    const validReservations = reservations.filter(r => r.status !== 'blocked');
+
+    validReservations.forEach(res => {
+      const resDate = new Date(res.date + 'T12:00:00');
+      const price = res.price || 0;
+
+      if (res.date === todayStr) todayRev += price;
+      
+      if (resDate.getMonth() === currentMonth && resDate.getFullYear() === currentYear) {
+        monthRev += price;
+        totalRes++;
+        if(courtCount[res.courtId] !== undefined) courtCount[res.courtId]++;
+      }
+
+      if (resDate >= startOfWeek && resDate <= endOfWeek) {
+        weekRev += price;
+      }
+    });
+
+    return { todayRev, weekRev, monthRev, totalRes, courtCount };
+  }, [reservations]);
+
+  return (
+    <div className="flex flex-col md:flex-row min-h-screen bg-zinc-950">
+      <aside className="w-full md:w-64 bg-zinc-900 border-b md:border-b-0 md:border-r border-zinc-800 p-4 md:h-screen sticky top-0 flex flex-col z-20">
+        <div className="flex items-center justify-between md:block mb-8">
+          <div>
+            <h1 className="text-xl font-black text-white">ARENA <span className="text-yellow-400">JD</span></h1>
+            <p className="text-xs text-zinc-500 font-medium">Painel Administrativo</p>
+          </div>
+          <button onClick={() => setView('login')} className="md:mt-6 text-sm text-zinc-400 hover:text-white flex items-center gap-2">
+            <ArrowLeft size={16} /> Sair
+          </button>
+        </div>
+
+        <nav className="flex md:flex-col gap-2 overflow-x-auto md:overflow-visible pb-2 md:pb-0 scrollbar-hide">
+          <button 
+            onClick={() => setActiveTab('dashboard')}
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all whitespace-nowrap md:whitespace-normal ${activeTab === 'dashboard' ? 'bg-yellow-400 text-black font-bold' : 'text-zinc-400 hover:bg-zinc-800'}`}
+          >
+            <BarChart3 size={20} /> Visão Geral
+          </button>
+          <button 
+            onClick={() => setActiveTab('agenda')}
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all whitespace-nowrap md:whitespace-normal ${activeTab === 'agenda' ? 'bg-yellow-400 text-black font-bold' : 'text-zinc-400 hover:bg-zinc-800'}`}
+          >
+            <CalendarDays size={20} /> Agenda Completa
+          </button>
+        </nav>
+      </aside>
+
+      <main className="flex-1 p-4 md:p-8 overflow-y-auto">
+        {activeTab === 'dashboard' && <AdminOverview stats={stats} />}
+        {activeTab === 'agenda' && <AdminAgenda reservations={reservations} onDelete={onDelete} onBlock={onBlock} />}
+      </main>
+    </div>
+  );
+};
+
+const AdminOverview = ({ stats }) => {
+  return (
+    <div className="space-y-6 animate-fade-in">
+      <h2 className="text-2xl font-bold">Visão Financeira</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl">
+          <div className="flex items-center gap-3 text-zinc-400 mb-2 font-medium">
+            <DollarSign size={18} className="text-yellow-400" /> Faturamento Hoje
+          </div>
+          <div className="text-3xl font-black">{formatCurrency(stats.todayRev)}</div>
+        </div>
+        <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl">
+          <div className="flex items-center gap-3 text-zinc-400 mb-2 font-medium">
+            <TrendingUp size={18} className="text-green-400" /> Faturamento Semanal
+          </div>
+          <div className="text-3xl font-black">{formatCurrency(stats.weekRev)}</div>
+        </div>
+        <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl border-l-4 border-l-yellow-400">
+          <div className="flex items-center gap-3 text-zinc-400 mb-2 font-medium">
+            <Activity size={18} className="text-blue-400" /> Faturamento Mensal
+          </div>
+          <div className="text-3xl font-black">{formatCurrency(stats.monthRev)}</div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+        <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl">
+          <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+            <MapPin size={20} className="text-yellow-400"/> Agendamentos por Quadra (Mês)
+          </h3>
+          <div className="space-y-4">
+            {COURTS.map(court => {
+              const count = stats.courtCount[court.id] || 0;
+              const percent = stats.totalRes ? Math.round((count / stats.totalRes) * 100) : 0;
+              return (
+                <div key={court.id}>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="font-medium text-zinc-300">{court.name}</span>
+                    <span className="font-bold">{count} reservas</span>
+                  </div>
+                  <div className="w-full bg-zinc-950 rounded-full h-2">
+                    <div className="bg-yellow-400 h-2 rounded-full transition-all duration-1000" style={{ width: `${percent}%` }}></div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl flex flex-col justify-center items-center text-center">
+          <Users size={48} className="text-zinc-700 mb-4" />
+          <h3 className="text-lg font-bold text-zinc-300 mb-1">Total de Agendamentos no Mês</h3>
+          <p className="text-5xl font-black text-white">{stats.totalRes}</p>
+          <p className="text-sm text-zinc-500 mt-4">Os dados são calculados automaticamente com base nas reservas com status ativo.</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const AdminAgenda = ({ reservations, onDelete, onBlock }) => {
+  const [filterDate, setFilterDate] = useState(getDayString(new Date()));
+  const [isBlocking, setIsBlocking] = useState(false);
+
+  const dailyReservations = reservations
+    .filter(r => r.date === filterDate)
+    .sort((a, b) => {
+      const aMins = parseInt(a.startTime.split(':')[0]) * 60 + parseInt(a.startTime.split(':')[1]);
+      const bMins = parseInt(b.startTime.split(':')[0]) * 60 + parseInt(b.startTime.split(':')[1]);
+      return aMins - bMins;
+    });
+
+  return (
+    <div className="space-y-6 animate-fade-in pb-20">
+      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+        <h2 className="text-2xl font-bold">Gerenciamento de Agenda</h2>
+        <div className="flex gap-2">
+          <input 
+            type="date" 
+            value={filterDate}
+            onChange={(e) => setFilterDate(e.target.value)}
+            className="bg-zinc-900 border border-zinc-800 text-white px-4 py-2 rounded-xl focus:outline-none focus:border-yellow-400"
+          />
+          <button 
+            onClick={() => setIsBlocking(true)}
+            className="bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20 px-4 py-2 rounded-xl font-medium transition flex items-center gap-2"
+          >
+            <Lock size={16} /> Bloquear
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        {COURTS.map(court => {
+          const courtRes = dailyReservations.filter(r => r.courtId === court.id);
+          return (
+            <div key={court.id} className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden flex flex-col">
+              <div className="bg-zinc-800/50 p-4 border-b border-zinc-800 font-bold text-center flex-shrink-0 truncate text-sm">
+                {court.name}
+              </div>
+              <div className="p-2 space-y-2 flex-1 overflow-y-auto max-h-[60vh] sm:max-h-none">
+                {courtRes.length === 0 ? (
+                   <p className="text-zinc-600 text-xs text-center p-4">Nenhum registro.</p>
+                ) : (
+                  courtRes.map(res => (
+                    <div key={res.id} className={`p-3 rounded-xl border text-sm relative group ${res.status === 'blocked' ? 'bg-zinc-950 border-red-900/50' : 'bg-zinc-950 border-zinc-800'}`}>
+                      <div className="flex justify-between items-start mb-1">
+                        <span className={`font-bold ${res.status === 'blocked' ? 'text-red-400' : 'text-yellow-400'}`}>
+                          {res.startTime} <span className="text-xs text-zinc-500 font-normal">({res.duration}m)</span>
+                        </span>
+                        {res.status !== 'blocked' && <span className="text-green-400 font-bold">{formatCurrency(res.price)}</span>}
+                      </div>
+                      <p className="font-medium truncate">{res.customerName}</p>
+                      {res.status !== 'blocked' && <p className="text-xs text-zinc-500">{res.customerPhone}</p>}
+                      {res.obs && <p className="text-xs text-zinc-400 italic mt-1 truncate">"{res.obs}"</p>}
+                      <button 
+                        onClick={() => { if(window.confirm('Excluir este registro?')) onDelete(res.id) }}
+                        className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Cancelar / Excluir"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {isBlocking && (
+        <AdminBlockModal date={filterDate} onClose={() => setIsBlocking(false)} onBlock={onBlock} reservations={reservations} />
+      )}
+    </div>
+  );
+};
+
+const AdminBlockModal = ({ date, onClose, onBlock, reservations }) => {
+  const [courtId, setCourtId] = useState(COURTS[0].id);
+  const [startTime, setStartTime] = useState('08:00');
+  const [duration, setDuration] = useState(60);
+
+  const handleBlock = (e) => {
+    e.preventDefault();
+    if(checkAvailability(date, courtId, startTime, duration, reservations)) {
+      onBlock(date, courtId, startTime, duration);
+      onClose();
+    } else {
+      alert("Conflito! Já existe um agendamento neste horário.");
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-zinc-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-red-900/50">
+        <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-red-400">
+          <Lock size={20} /> Bloquear Horário
+        </h3>
+        <form onSubmit={handleBlock} className="space-y-4">
+          <div>
+            <label className="block text-xs text-zinc-400 mb-1">Data</label>
+            <input type="text" value={date.split('-').reverse().join('/')} disabled className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-sm text-zinc-500" />
+          </div>
+          <div>
+             <label className="block text-xs text-zinc-400 mb-1">Quadra</label>
+             <select value={courtId} onChange={e=>setCourtId(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-sm">
+               {COURTS.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+             </select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+             <div>
+               <label className="block text-xs text-zinc-400 mb-1">Início</label>
+               <select value={startTime} onChange={e=>setStartTime(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-sm">
+                 {TIME_SLOTS.map(t => <option key={t} value={t}>{t}</option>)}
+               </select>
+             </div>
+             <div>
+               <label className="block text-xs text-zinc-400 mb-1">Duração</label>
+               <select value={duration} onChange={e=>setDuration(Number(e.target.value))} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-sm">
+                 {DURATIONS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
+               </select>
+             </div>
+          </div>
+          <div className="flex gap-3 pt-4">
+            <button type="button" onClick={onClose} className="flex-1 border border-zinc-800 py-3 rounded-xl hover:bg-zinc-800 font-medium">Cancelar</button>
+            <button type="submit" className="flex-1 bg-red-500 text-white py-3 rounded-xl hover:bg-red-600 font-bold">Bloquear</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+                                         }
+  
+  );
+};
+    
