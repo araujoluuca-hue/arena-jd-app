@@ -5,7 +5,16 @@ import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, onSnapshot, addDoc, deleteDoc, doc } from 'firebase/firestore';
 import { Calendar, Clock, MapPin, X, Activity, CalendarDays, CheckCircle, Lock, Trash2, ArrowLeft, AlertCircle, RefreshCw, DollarSign, TrendingUp, BarChart3, Users } from 'lucide-react';
 
-const firebaseConfig = { apiKey: "fake-key-para-renderizar", projectId: "arena-jd-demo", appId: "1:123456:web:123456" };
+const firebaseConfig = {
+  apiKey: "AIzaSyAESjcStj4qQotTmSuU3-GAdellNR-DGwE",
+  authDomain: "arena-jd.firebaseapp.com",
+  projectId: "arena-jd",
+  storageBucket: "arena-jd.firebasestorage.app",
+  messagingSenderId: "1068375009215",
+  appId: "1:1068375009215:web:bbd498a6db6e326981630a",
+  measurementId: "G-2STXPKJB9M"
+};
+
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -65,7 +74,7 @@ function App() {
   const [toast, setToast] = useState(null);
 
   useEffect(() => {
-    const initAuth = async () => { try { await signInAnonymously(auth); } catch { setUser({ uid: 'demo-offline' }); } };
+    const initAuth = async () => { try { await signInAnonymously(auth); } catch (err) { console.error("Erro no Auth:", err); } };
     initAuth();
     return onAuthStateChanged(auth, (u) => { if(u) setUser(u) });
   }, []);
@@ -85,17 +94,17 @@ function App() {
 
   const handleCreateReservation = async (data) => {
     try { await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'reservations'), { ...data, createdAt: new Date().toISOString() }); showToast("Agendamento confirmado!"); return true; } 
-    catch { showToast("Erro (Modo Demonstração)", "error"); return false; }
+    catch { showToast("Erro ao comunicar com banco.", "error"); return false; }
   };
 
   const handleDeleteReservation = async (id) => {
-    try { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'reservations', id)); showToast("Cancelado."); } 
-    catch { showToast("Erro (Modo Demonstração)", "error"); }
+    try { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'reservations', id)); showToast("Cancelado com sucesso."); } 
+    catch { showToast("Erro ao cancelar.", "error"); }
   };
 
   const handleBlockTime = async (date, courtId, startTime, durationMins) => {
-    try { await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'reservations'), { date, courtId, startTime, duration: durationMins, status: 'blocked', customerName: 'BLOQUEIO', customerPhone: '-', price: 0, sport: '-', createdAt: new Date().toISOString() }); showToast("Bloqueado."); } 
-    catch { showToast("Erro.", "error"); }
+    try { await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'reservations'), { date, courtId, startTime, duration: durationMins, status: 'blocked', customerName: 'BLOQUEIO', customerPhone: '-', price: 0, sport: '-', createdAt: new Date().toISOString() }); showToast("Horário bloqueado."); } 
+    catch { showToast("Erro ao bloquear.", "error"); }
   };
 
   if (!user || loading) return <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center text-yellow-400"><RefreshCw className="animate-spin mb-4" size={48} /><h1 className="text-xl font-bold">CARREGANDO...</h1></div>;
@@ -110,7 +119,6 @@ function App() {
     </div>
   );
 }
-
 const LoginScreen = ({ setView }) => (
   <div className="min-h-screen flex items-center justify-center p-4">
     <div className="max-w-md w-full text-center">
@@ -163,6 +171,7 @@ const CustomerBookingScreen = ({ reservations, onSave, setView }) => {
     </div>
   );
 };
+
 const BookingFormModal = ({ date, courtId, startTime, onClose, onSave, reservations }) => {
   const [duration, setDuration] = useState(60);
   const [sport, setSport] = useState(SPORTS[0]);
