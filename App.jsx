@@ -150,14 +150,8 @@ const CustomerBookingScreen = ({ reservations, onSave, setView }) => {
 
   const getCalendarDays = () => {
     return Array.from({length: 60}, (_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() + i);
-      return {
-        full: getDayString(d),
-        dayNum: d.getDate(),
-        dayWeek: d.toLocaleDateString('pt-BR', {weekday: 'short'}).toUpperCase().replace('.', ''),
-        month: d.toLocaleDateString('pt-BR', {month: 'long'}).toUpperCase()
-      };
+      const d = new Date(); d.setDate(d.getDate() + i);
+      return { full: getDayString(d), dayNum: d.getDate(), dayWeek: d.toLocaleDateString('pt-BR', {weekday: 'short'}).toUpperCase().replace('.', ''), month: d.toLocaleDateString('pt-BR', {month: 'long'}).toUpperCase() };
     });
   };
 
@@ -211,25 +205,17 @@ const BookingFormModal = ({ date, courtId, startTime, onClose, onSave, reservati
   const [phone, setPhone] = useState('');
   const isDurationValid = useMemo(() => checkAvailability(date, courtId, startTime, duration, reservations), [date, courtId, startTime, duration, reservations]);
   const price = DURATIONS.find(d => d.value === duration).price;
-  const handleSubmit = async (e) => { e.preventDefault(); if(!name||!phone||!isDurationValid) return; const ok = await onSave({date, courtId, startTime, duration, sport, payment, customerName: name, customerPhone: phone, price, status: 'reserved'}); if(ok) onClose(); };
-  return (
-    <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-      <div className="bg-zinc-900 w-full max-w-md rounded-3xl p-6 border border-zinc-800 max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-6"><h3 className="text-xl font-bold">Dados da Reserva</h3><button onClick={onClose} className="p-2 bg-zinc-800 rounded-full text-zinc-500"><X size={20}/></button></div>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div><label className="text-[10px] font-bold text-zinc-500 uppercase mb-1 block">Esporte</label><select value={sport} onChange={e=>setSport(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#F58021]">{SPORTS.map(s => <option key={s} value={s}>{s}</option>)}</select></div>
-            <div><label className="text-[10px] font-bold text-zinc-500 uppercase mb-1 block">Pagamento</label><select value={payment} onChange={e=>setPayment(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#F58021]">{PAYMENTS.map(p => <option key={p} value={p}>{p}</option>)}</select></div>
-          </div>
-          <div><label className="text-[10px] font-bold text-zinc-500 uppercase mb-2 block">Tempo de Quadra</label><div className="grid grid-cols-2 gap-2">{DURATIONS.map(d => <button key={d.value} type="button" onClick={() => setDuration(d.value)} className={`py-2 rounded-lg text-xs border font-bold ${duration===d.value?'bg-[#5A2C81] border-[#5A2C81] text-white':'bg-zinc-800 border-zinc-700 text-zinc-400'}`}>{d.label}</button>)}</div></div>
-          <input required type="text" placeholder="Seu Nome" value={name} onChange={e => setName(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#F58021]"/>
-          <input required type="tel" placeholder="Seu WhatsApp" value={phone} onChange={e => setPhone(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#F58021]"/>
-          <div className="flex justify-between items-center pt-4 border-t border-zinc-800"><p className="text-2xl font-black text-[#F58021]">{formatCurrency(price)}</p><button type="submit" disabled={!isDurationValid} className="bg-[#F58021] text-white font-bold py-3 px-8 rounded-xl disabled:opacity-50">CONFIRMAR</button></div>
-        </form>
-      </div>
-    </div>
-  );
-};
+  const courtName = COURTS.find(c => c.id === courtId)?.name;
+  
+  const handleSubmit = async (e) => { 
+    e.preventDefault(); 
+    if(!name||!phone||!isDurationValid) return; 
+    
+    // Salva no banco de dados
+    const ok = await onSave({date, courtId, startTime, duration, sport, payment, customerName: name, customerPhone: phone, price, status: 'reserved'}); 
+    
+    if(ok) {
+      // Abre o WhatsApp
 const AdminDashboard = ({ reservations, enrollments, onDeleteRes, onDeleteEnr, onBlock, onSaveEnr, setView }) => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showEnrModal, setShowEnrModal] = useState(false);
@@ -318,7 +304,7 @@ const AdminAgenda = ({ reservations, onDelete, onBlock }) => {
               <div className="bg-zinc-800/50 p-3 text-center text-[10px] font-black uppercase border-b border-zinc-800 text-zinc-400 tracking-tighter">{court.name}</div>
               <div className="p-2 space-y-2">{courtRes.length === 0 ? <p className="text-zinc-800 text-[10px] text-center py-6 font-bold uppercase italic tracking-widest">Livre</p> : courtRes.map(res => (
                 <div key={res.id} className={`p-3 rounded-xl border text-sm relative group ${res.status==='blocked'?'bg-zinc-950 border-red-900/30':'bg-zinc-950 border-zinc-800'}`}>
-                  <div className="flex justify-between items-center mb-1"><span className={`font-bold ${res.status==='blocked'?'text-red-400':'text-[#F58021]'}`}>{res.startTime}</span>{res.status!=='blocked' && <span className="text-[9px] font-black bg-zinc-800 px-1 rounded text-zinc-500">{res.payment}</span>}</div>
+                  <div className="flex justify-between items-center mb-1"><span className={`font-bold ${res.status==='blocked'?'text-red-400':'text-[#F58021]'}`}>{res.startTime} <span className="text-[10px] text-zinc-500 font-medium">({res.duration} min)</span></span>{res.status!=='blocked' && <span className="text-[9px] font-black bg-zinc-800 px-1 rounded text-zinc-500">{res.payment}</span>}</div>
                   {res.status !== 'blocked' && <p className="text-[9px] text-[#5A2C81] uppercase font-black mb-1">{res.sport}</p>}
                   <p className="font-bold text-zinc-300 truncate tracking-tight">{res.customerName}</p>
                   <button onClick={() => { if(window.confirm('Excluir?')) onDelete(res.id) }} className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={12}/></button>
