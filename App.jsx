@@ -46,6 +46,7 @@ const generateTimeSlots = () => {
   return slots;
 };
 const TIME_SLOTS = generateTimeSlots();
+
 const getDayString = (date) => `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
 const formatCurrency = (value) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
@@ -150,8 +151,14 @@ const CustomerBookingScreen = ({ reservations, onSave, setView }) => {
 
   const getCalendarDays = () => {
     return Array.from({length: 60}, (_, i) => {
-      const d = new Date(); d.setDate(d.getDate() + i);
-      return { full: getDayString(d), dayNum: d.getDate(), dayWeek: d.toLocaleDateString('pt-BR', {weekday: 'short'}).toUpperCase().replace('.', ''), month: d.toLocaleDateString('pt-BR', {month: 'long'}).toUpperCase() };
+      const d = new Date();
+      d.setDate(d.getDate() + i);
+      return {
+        full: getDayString(d),
+        dayNum: d.getDate(),
+        dayWeek: d.toLocaleDateString('pt-BR', {weekday: 'short'}).toUpperCase().replace('.', ''),
+        month: d.toLocaleDateString('pt-BR', {month: 'long'}).toUpperCase()
+      };
     });
   };
 
@@ -211,11 +218,39 @@ const BookingFormModal = ({ date, courtId, startTime, onClose, onSave, reservati
     e.preventDefault(); 
     if(!name||!phone||!isDurationValid) return; 
     
-    // Salva no banco de dados
+    // 1. Salva no banco de dados
     const ok = await onSave({date, courtId, startTime, duration, sport, payment, customerName: name, customerPhone: phone, price, status: 'reserved'}); 
     
+    // 2. Abre o WhatsApp com o número oficial da Arena JD
     if(ok) {
-      // Abre o WhatsApp
+      const numeroDaArena = "5588921859996"; 
+      const dataFormatada = date.split('-').reverse().join('/');
+      
+      const mensagem = `🎾 *NOVO AGENDAMENTO - ARENA JD* 🎾%0A%0A*Nome:* ${name}%0A*Quadra:* ${courtName}%0A*Data:* ${dataFormatada}%0A*Horário:* ${startTime}%0A*Duração:* ${duration} min%0A*Esporte:* ${sport}%0A*Pagamento:* ${payment}%0A*Valor Total:* ${formatCurrency(price)}%0A%0AOlá! Gostaria de validar e confirmar minha quadra.`;
+      
+      window.open(`https://wa.me/${numeroDaArena}?text=${mensagem}`, '_blank');
+      onClose(); 
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+      <div className="bg-zinc-900 w-full max-w-md rounded-3xl p-6 border border-zinc-800 max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-6"><h3 className="text-xl font-bold">Dados da Reserva</h3><button onClick={onClose} className="p-2 bg-zinc-800 rounded-full text-zinc-500"><X size={20}/></button></div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className="text-[10px] font-bold text-zinc-500 uppercase mb-1 block">Esporte</label><select value={sport} onChange={e=>setSport(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#F58021]">{SPORTS.map(s => <option key={s} value={s}>{s}</option>)}</select></div>
+            <div><label className="text-[10px] font-bold text-zinc-500 uppercase mb-1 block">Pagamento</label><select value={payment} onChange={e=>setPayment(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#F58021]">{PAYMENTS.map(p => <option key={p} value={p}>{p}</option>)}</select></div>
+          </div>
+          <div><label className="text-[10px] font-bold text-zinc-500 uppercase mb-2 block">Tempo de Quadra</label><div className="grid grid-cols-2 gap-2">{DURATIONS.map(d => <button key={d.value} type="button" onClick={() => setDuration(d.value)} className={`py-2 rounded-lg text-xs border font-bold ${duration===d.value?'bg-[#5A2C81] border-[#5A2C81] text-white':'bg-zinc-800 border-zinc-700 text-zinc-400'}`}>{d.label}</button>)}</div></div>
+          <input required type="text" placeholder="Seu Nome" value={name} onChange={e => setName(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#F58021]"/>
+          <input required type="tel" placeholder="Seu WhatsApp" value={phone} onChange={e => setPhone(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#F58021]"/>
+          <div className="flex justify-between items-center pt-4 border-t border-zinc-800"><p className="text-2xl font-black text-[#F58021]">{formatCurrency(price)}</p><button type="submit" disabled={!isDurationValid} className="bg-[#F58021] text-white font-bold py-3 px-8 rounded-xl disabled:opacity-50">CONFIRMAR</button></div>
+        </form>
+      </div>
+    </div>
+  );
+};
 const AdminDashboard = ({ reservations, enrollments, onDeleteRes, onDeleteEnr, onBlock, onSaveEnr, setView }) => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showEnrModal, setShowEnrModal] = useState(false);
