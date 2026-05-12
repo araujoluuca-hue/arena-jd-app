@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, onSnapshot, addDoc, deleteDoc, doc } from 'firebase/firestore';
-import { Calendar, Clock, MapPin, X, Activity, CalendarDays, CheckCircle, Lock, Trash2, ArrowLeft, AlertCircle, RefreshCw, DollarSign, TrendingUp, BarChart3, Users, GraduationCap, Plus, CreditCard } from 'lucide-react';
+import { Calendar, Clock, MapPin, X, Activity, CalendarDays, CheckCircle, Lock, Trash2, ArrowLeft, AlertCircle, RefreshCw, DollarSign, TrendingUp, BarChart3, Users, GraduationCap, Plus, CreditCard, Info } from 'lucide-react';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAESjcStj4qQotTmSuU3-GAdellNR-DGwE",
@@ -109,6 +109,7 @@ export default function App() {
     <div className="min-h-screen bg-zinc-950 text-zinc-50 font-sans">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       {view === 'login' && <LoginScreen setView={setView} />}
+      {view === 'how_to' && <HowToBookScreen setView={setView} />}
       {view === 'admin_login' && <AdminLoginScreen setView={setView} showToast={showToast} />}
       {view === 'customer' && <CustomerBookingScreen reservations={reservations} onSave={(d) => handleCreate('reservations', d)} setView={setView} />}
       {view === 'admin_dashboard' && <AdminDashboard reservations={reservations} enrollments={enrollments} onDeleteRes={(id) => handleDelete('reservations', id)} onDeleteEnr={(id) => handleDelete('enrollments', id)} onBlock={(d) => handleCreate('reservations', d)} onSaveEnr={(d) => handleCreate('enrollments', d)} setView={setView} />}
@@ -120,11 +121,42 @@ const LoginScreen = ({ setView }) => (
     <div className="max-w-md w-full text-center">
       <img src="https://i.postimg.cc/j21g4jhM/Screenshot-20260508-202911-Instagram-2.jpg" alt="Arena JD" className="w-48 h-48 mx-auto mb-6 rounded-full object-cover shadow-[0_0_30px_rgba(90,44,129,0.4)] border-4 border-[#5A2C81]" />
       <h1 className="text-4xl font-black text-white uppercase mb-10 tracking-tighter">Arena <span className="text-[#F58021]">JD</span></h1>
+      
       <button onClick={() => setView('customer')} className="w-full bg-[#F58021] text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-3 mb-4 shadow-xl shadow-[#F58021]/20 active:scale-95 transition-all"><Calendar size={24} />AGENDAR HORÁRIO</button>
+      
+      <button onClick={() => setView('how_to')} className="w-full bg-zinc-800 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-3 mb-4 active:scale-95 transition-all"><Info size={24} className="text-[#F58021]" />COMO AGENDAR</button>
+
       <button onClick={() => setView('admin_login')} className="w-full bg-zinc-900 border border-[#5A2C81] text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-3 active:bg-zinc-800 transition-all"><Lock size={20} className="text-[#F58021]" />ACESSO RESTRITO</button>
     </div>
   </div>
 );
+
+const HowToBookScreen = ({ setView }) => {
+  const steps = [
+    "Escolha a data", "Escolha a quadra", "Escolha o horário", "Escolha o tipo de esporte", 
+    "Escolha a forma de pagamento", "Escolha o tempo do agendamento", "Preencha seu nome e número do WhatsApp"
+  ];
+  return (
+    <div className="min-h-screen bg-zinc-950 pb-20">
+      <header className="sticky top-0 bg-zinc-950/90 border-b border-zinc-900 z-30 px-4 py-4 flex items-center gap-3 backdrop-blur-md">
+        <button onClick={() => setView('login')} className="p-2 bg-zinc-900 rounded-full text-zinc-400"><ArrowLeft size={20}/></button>
+        <h1 className="text-lg font-black uppercase tracking-tight text-white">Como <span className="text-[#F58021]">Agendar</span></h1>
+      </header>
+      <main className="max-w-md mx-auto p-4 space-y-3 mt-4">
+        {steps.map((step, i) => (
+          <div key={i} className="flex items-center gap-4 bg-zinc-900 p-4 rounded-2xl border border-zinc-800">
+            <div className="bg-[#F58021] text-zinc-950 font-black w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-lg shadow-[#F58021]/30">{i+1}</div>
+            <p className="text-sm font-bold text-zinc-200">{step}</p>
+          </div>
+        ))}
+        <div className="mt-8 bg-[#5A2C81]/20 border border-[#5A2C81] p-6 rounded-2xl text-center">
+           <Activity className="text-[#F58021] mx-auto mb-3" size={32} />
+           <p className="text-sm text-zinc-300 leading-relaxed">Após confirmar o agendamento, você será <b>automaticamente direcionado</b> para o WhatsApp da arena, com a mensagem do agendamento já preenchida para envio!</p>
+        </div>
+      </main>
+    </div>
+  );
+};
 
 const AdminLoginScreen = ({ setView, showToast }) => {
   const [pwd, setPwd] = useState('');
@@ -149,20 +181,10 @@ const CustomerBookingScreen = ({ reservations, onSave, setView }) => {
   const [selectedCourt, setSelectedCourt] = useState(COURTS[0].id);
   const [bookingModalInfo, setBookingModalInfo] = useState(null);
 
-  const getCalendarDays = () => {
-    return Array.from({length: 60}, (_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() + i);
-      return {
-        full: getDayString(d),
-        dayNum: d.getDate(),
-        dayWeek: d.toLocaleDateString('pt-BR', {weekday: 'short'}).toUpperCase().replace('.', ''),
-        month: d.toLocaleDateString('pt-BR', {month: 'long'}).toUpperCase()
-      };
-    });
-  };
-
-  const days = getCalendarDays();
+  const days = Array.from({length: 60}, (_, i) => {
+    const d = new Date(); d.setDate(d.getDate() + i);
+    return { full: getDayString(d), dayNum: d.getDate(), dayWeek: d.toLocaleDateString('pt-BR', {weekday: 'short'}).toUpperCase().replace('.', ''), month: d.toLocaleDateString('pt-BR', {month: 'long'}).toUpperCase() };
+  });
   const currentMonth = days.find(d => d.full === selectedDate)?.month;
 
   return (
@@ -173,17 +195,9 @@ const CustomerBookingScreen = ({ reservations, onSave, setView }) => {
       </header>
       <main className="max-w-3xl mx-auto p-4 space-y-8 mt-4">
         <section>
-          <div className="flex items-center justify-between mb-3">
-             <h2 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2"><CalendarDays size={14}/> Selecione a Data</h2>
-             <span className="text-[10px] font-black text-[#F58021]">{currentMonth}</span>
-          </div>
+          <div className="flex items-center justify-between mb-3"><h2 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2"><CalendarDays size={14}/> Selecione a Data</h2><span className="text-[10px] font-black text-[#F58021]">{currentMonth}</span></div>
           <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide snap-x">
-            {days.map(day => (
-              <button key={day.full} onClick={() => setSelectedDate(day.full)} className={`snap-center flex-shrink-0 w-16 py-3 rounded-2xl border transition-all ${selectedDate===day.full?'bg-[#F58021] border-[#F58021] text-white shadow-lg shadow-[#F58021]/20':'bg-zinc-900 border-zinc-800 text-zinc-500'}`}>
-                <span className="text-[9px] font-bold block mb-1">{day.dayWeek}</span>
-                <span className="text-lg font-black">{day.dayNum}</span>
-              </button>
-            ))}
+            {days.map(day => <button key={day.full} onClick={() => setSelectedDate(day.full)} className={`snap-center flex-shrink-0 w-16 py-3 rounded-2xl border transition-all ${selectedDate===day.full?'bg-[#F58021] border-[#F58021] text-white shadow-lg shadow-[#F58021]/20':'bg-zinc-900 border-zinc-800 text-zinc-500'}`}><span className="text-[9px] font-bold block mb-1">{day.dayWeek}</span><span className="text-lg font-black">{day.dayNum}</span></button>)}
           </div>
         </section>
         <section className="space-y-3">
@@ -218,17 +232,20 @@ const BookingFormModal = ({ date, courtId, startTime, onClose, onSave, reservati
     e.preventDefault(); 
     if(!name||!phone||!isDurationValid) return; 
     
-    // 1. Salva no banco de dados
     const ok = await onSave({date, courtId, startTime, duration, sport, payment, customerName: name, customerPhone: phone, price, status: 'reserved'}); 
     
-    // 2. Abre o WhatsApp com o número oficial da Arena JD
     if(ok) {
       const numeroDaArena = "5588921859996"; 
       const dataFormatada = date.split('-').reverse().join('/');
-      
       const mensagem = `🎾 *NOVO AGENDAMENTO - ARENA JD* 🎾%0A%0A*Nome:* ${name}%0A*Quadra:* ${courtName}%0A*Data:* ${dataFormatada}%0A*Horário:* ${startTime}%0A*Duração:* ${duration} min%0A*Esporte:* ${sport}%0A*Pagamento:* ${payment}%0A*Valor Total:* ${formatCurrency(price)}%0A%0AOlá! Gostaria de validar e confirmar minha quadra.`;
       
-      window.open(`https://wa.me/${numeroDaArena}?text=${mensagem}`, '_blank');
+      const newWindow = window.open(`https://wa.me/${numeroDaArena}?text=${mensagem}`, '_blank');
+      
+      // Aviso de bloqueio de pop-up
+      if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+          alert('Atenção: O redirecionamento automático para o WhatsApp foi bloqueado.\n\nPor favor, autorize os pop-ups no seu navegador para concluir o processo, ou chame a arena diretamente no número (88) 92185-9996 para validar o agendamento.');
+      }
+      
       onClose(); 
     }
   };
