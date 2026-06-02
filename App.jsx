@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, onSnapshot, addDoc, deleteDoc, doc } from 'firebase/firestore';
-import { Calendar, Clock, MapPin, X, Activity, CalendarDays, CheckCircle, Lock, Trash2, ArrowLeft, AlertCircle, RefreshCw, DollarSign, TrendingUp, BarChart3, Users, GraduationCap, Plus, CreditCard, Info } from 'lucide-react';
+import { Calendar, Clock, MapPin, X, Activity, CalendarDays, CheckCircle, Lock, Trash2, ArrowLeft, AlertCircle, RefreshCw, DollarSign, TrendingUp, BarChart3, Users, GraduationCap, Plus, CreditCard, Info, MessageCircle } from 'lucide-react';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAESjcStj4qQotTmSuU3-GAdellNR-DGwE",
@@ -116,6 +116,7 @@ export default function App() {
     </div>
   );
 }
+
 const LoginScreen = ({ setView }) => (
   <div className="min-h-screen flex items-center justify-center p-4 bg-zinc-950">
     <div className="max-w-md w-full text-center">
@@ -151,7 +152,7 @@ const HowToBookScreen = ({ setView }) => {
         ))}
         <div className="mt-8 bg-[#5A2C81]/20 border border-[#5A2C81] p-6 rounded-2xl text-center">
            <Activity className="text-[#F58021] mx-auto mb-3" size={32} />
-           <p className="text-sm text-zinc-300 leading-relaxed">Após confirmar o agendamento, você será <b>automaticamente direcionado</b> para o WhatsApp da arena, com a mensagem do agendamento já preenchida para envio!</p>
+           <p className="text-sm text-zinc-300 leading-relaxed">Após confirmar o agendamento, sua reserva será <b>salva automaticamente</b> no sistema da arena de forma simples e rápida!</p>
         </div>
       </main>
     </div>
@@ -160,7 +161,7 @@ const HowToBookScreen = ({ setView }) => {
 
 const AdminLoginScreen = ({ setView, showToast }) => {
   const [pwd, setPwd] = useState('');
-  const handleLogin = (e) => { e.preventDefault(); if (pwd === 'admin123') setView('admin_dashboard'); else showToast('Senha incorreta!', 'error'); };
+  const handleLogin = (e) => { e.preventDefault(); if (pwd === 'dheyminarena') setView('admin_dashboard'); else showToast('Senha incorreta!', 'error'); };
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative">
       <button onClick={() => setView('login')} className="absolute top-6 left-6 p-2 bg-zinc-900 rounded-full text-zinc-400"><ArrowLeft size={24} /></button>
@@ -226,7 +227,6 @@ const BookingFormModal = ({ date, courtId, startTime, onClose, onSave, reservati
   const [phone, setPhone] = useState('');
   const isDurationValid = useMemo(() => checkAvailability(date, courtId, startTime, duration, reservations), [date, courtId, startTime, duration, reservations]);
   const price = DURATIONS.find(d => d.value === duration).price;
-  const courtName = COURTS.find(c => c.id === courtId)?.name;
   
   const handleSubmit = async (e) => { 
     e.preventDefault(); 
@@ -235,17 +235,6 @@ const BookingFormModal = ({ date, courtId, startTime, onClose, onSave, reservati
     const ok = await onSave({date, courtId, startTime, duration, sport, payment, customerName: name, customerPhone: phone, price, status: 'reserved'}); 
     
     if(ok) {
-      const numeroDaArena = "5588921859996"; 
-      const dataFormatada = date.split('-').reverse().join('/');
-      const mensagem = `🎾 *NOVO AGENDAMENTO - ARENA JD* 🎾%0A%0A*Nome:* ${name}%0A*Quadra:* ${courtName}%0A*Data:* ${dataFormatada}%0A*Horário:* ${startTime}%0A*Duração:* ${duration} min%0A*Esporte:* ${sport}%0A*Pagamento:* ${payment}%0A*Valor Total:* ${formatCurrency(price)}%0A%0AOlá! Gostaria de validar e confirmar minha quadra.`;
-      
-      const newWindow = window.open(`https://wa.me/${numeroDaArena}?text=${mensagem}`, '_blank');
-      
-      // Aviso de bloqueio de pop-up
-      if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-          alert('Atenção: O redirecionamento automático para o WhatsApp foi bloqueado.\n\nPor favor, autorize os pop-ups no seu navegador para concluir o processo, ou chame a arena diretamente no número (88) 92185-9996 para validar o agendamento.');
-      }
-      
       onClose(); 
     }
   };
@@ -268,6 +257,7 @@ const BookingFormModal = ({ date, courtId, startTime, onClose, onSave, reservati
     </div>
   );
 };
+
 const AdminDashboard = ({ reservations, enrollments, onDeleteRes, onDeleteEnr, onBlock, onSaveEnr, setView }) => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showEnrModal, setShowEnrModal] = useState(false);
@@ -293,11 +283,11 @@ const AdminDashboard = ({ reservations, enrollments, onDeleteRes, onDeleteEnr, o
           <div className="space-y-6">
             <div className="flex justify-between items-center"><h2 className="text-2xl font-bold">Matrículas</h2><button onClick={() => setShowEnrModal(true)} className="bg-[#F58021] text-white p-2 rounded-full hover:scale-105 transition-all"><Plus size={24}/></button></div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">{enrollments.map(e => (
-              <div key={e.id} className="bg-zinc-900 border border-zinc-800 p-4 rounded-2xl relative group">
-                <p className="font-bold text-white">{e.name}</p>
+              <div key={e.id} className="bg-zinc-900 border border-zinc-800 p-4 rounded-2xl relative">
+                <p className="font-bold text-white pr-10">{e.name}</p>
                 <p className="text-xs text-zinc-500 mb-2">{e.phone}</p>
                 <div className="flex justify-between items-center"><span className="text-[10px] font-bold bg-[#5A2C81] px-2 py-1 rounded text-white">{e.plan}</span><span className="text-xs font-bold text-green-400">{formatCurrency(e.price)}</span></div>
-                <button onClick={() => { if(window.confirm('Remover matrícula?')) onDeleteEnr(e.id) }} className="absolute top-2 right-2 p-1 bg-red-500/20 text-red-500 rounded-md opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={14}/></button>
+                <button onClick={() => { if(window.confirm('Remover matrícula?')) onDeleteEnr(e.id) }} className="absolute top-3 right-3 p-2 bg-red-500/20 text-red-500 rounded-md transition-all"><Trash2 size={16}/></button>
               </div>
             ))}</div>
           </div>
@@ -355,11 +345,24 @@ const AdminAgenda = ({ reservations, onDelete, onBlock }) => {
             <div key={court.id} className="bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-800">
               <div className="bg-zinc-800/50 p-3 text-center text-[10px] font-black uppercase border-b border-zinc-800 text-zinc-400 tracking-tighter">{court.name}</div>
               <div className="p-2 space-y-2">{courtRes.length === 0 ? <p className="text-zinc-800 text-[10px] text-center py-6 font-bold uppercase italic tracking-widest">Livre</p> : courtRes.map(res => (
-                <div key={res.id} className={`p-3 rounded-xl border text-sm relative group ${res.status==='blocked'?'bg-zinc-950 border-red-900/30':'bg-zinc-950 border-zinc-800'}`}>
+                <div key={res.id} className={`p-3 pr-16 rounded-xl border text-sm relative ${res.status==='blocked'?'bg-zinc-950 border-red-900/30':'bg-zinc-950 border-zinc-800'}`}>
                   <div className="flex justify-between items-center mb-1"><span className={`font-bold ${res.status==='blocked'?'text-red-400':'text-[#F58021]'}`}>{res.startTime} <span className="text-[10px] text-zinc-500 font-medium">({res.duration} min)</span></span>{res.status!=='blocked' && <span className="text-[9px] font-black bg-zinc-800 px-1 rounded text-zinc-500">{res.payment}</span>}</div>
                   {res.status !== 'blocked' && <p className="text-[9px] text-[#5A2C81] uppercase font-black mb-1">{res.sport}</p>}
                   <p className="font-bold text-zinc-300 truncate tracking-tight">{res.customerName}</p>
-                  <button onClick={() => { if(window.confirm('Excluir?')) onDelete(res.id) }} className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={12}/></button>
+                  <div className="absolute top-2 right-2 flex gap-1.5 transition-all">
+                    {res.status !== 'blocked' && res.customerPhone && res.customerPhone !== '-' && (
+                      <button onClick={() => { 
+                        const cleanPhone = res.customerPhone.replace(/\D/g, '');
+                        const waUrl = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
+                        window.open(`https://wa.me/${waUrl}`, '_blank');
+                      }} className="p-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors shadow-lg" title="Chamar no WhatsApp">
+                        <MessageCircle size={16}/>
+                      </button>
+                    )}
+                    <button onClick={() => { if(window.confirm('Excluir?')) onDelete(res.id) }} className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors shadow-lg" title="Excluir">
+                      <Trash2 size={16}/>
+                    </button>
+                  </div>
                 </div>
               ))}</div>
             </div>
