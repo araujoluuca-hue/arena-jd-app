@@ -2,8 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, collection, onSnapshot, addDoc, deleteDoc, doc } from 'firebase/firestore';
-import { Calendar, Clock, MapPin, X, Activity, CalendarDays, CheckCircle, Lock, Trash2, ArrowLeft, AlertCircle, RefreshCw, DollarSign, TrendingUp, BarChart3, Users, GraduationCap, Plus, CreditCard, Info, MessageCircle } from 'lucide-react';
+import { getFirestore, collection, onSnapshot, addDoc, deleteDoc, doc, getDoc, setDoc } from 'firebase/firestore';
+import { Calendar, Clock, MapPin, X, Activity, CalendarDays, CheckCircle, Lock, Trash2, ArrowLeft, AlertCircle, RefreshCw, DollarSign, TrendingUp, BarChart3, Users, GraduationCap, Plus, CreditCard, Info, MessageCircle, KeyRound } from 'lucide-react';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAESjcStj4qQotTmSuU3-GAdellNR-DGwE",
@@ -103,6 +103,33 @@ export default function App() {
     catch { showToast("Erro ao remover.", "error"); }
   };
 
+  const handleAdminLogin = async (pwd) => {
+    try {
+      const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'admin');
+      const docSnap = await getDoc(docRef);
+      const currentPwd = docSnap.exists() && docSnap.data().password ? docSnap.data().password : 'dheyminarena';
+      
+      if (pwd === currentPwd) {
+        setView('admin_dashboard');
+      } else {
+        showToast('Senha incorreta!', 'error');
+      }
+    } catch (e) {
+      showToast('Erro ao verificar a senha.', 'error');
+    }
+  };
+
+  const handleUpdatePassword = async (newPwd) => {
+    try {
+      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'admin'), { password: newPwd }, { merge: true });
+      showToast('Senha alterada com sucesso!');
+      return true;
+    } catch {
+      showToast('Erro ao alterar senha.', 'error');
+      return false;
+    }
+  };
+
   if (loading) return <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center text-[#F58021]"><RefreshCw className="animate-spin mb-4" size={48} /><h1 className="text-xl font-bold uppercase tracking-widest text-white">Arena JD</h1></div>;
 
   return (
@@ -110,9 +137,9 @@ export default function App() {
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       {view === 'login' && <LoginScreen setView={setView} />}
       {view === 'how_to' && <HowToBookScreen setView={setView} />}
-      {view === 'admin_login' && <AdminLoginScreen setView={setView} showToast={showToast} />}
+      {view === 'admin_login' && <AdminLoginScreen setView={setView} onLogin={handleAdminLogin} />}
       {view === 'customer' && <CustomerBookingScreen reservations={reservations} onSave={(d) => handleCreate('reservations', d)} setView={setView} />}
-      {view === 'admin_dashboard' && <AdminDashboard reservations={reservations} enrollments={enrollments} onDeleteRes={(id) => handleDelete('reservations', id)} onDeleteEnr={(id) => handleDelete('enrollments', id)} onBlock={(d) => handleCreate('reservations', d)} onSaveEnr={(d) => handleCreate('enrollments', d)} setView={setView} />}
+      {view === 'admin_dashboard' && <AdminDashboard reservations={reservations} enrollments={enrollments} onDeleteRes={(id) => handleDelete('reservations', id)} onDeleteEnr={(id) => handleDelete('enrollments', id)} onBlock={(d) => handleCreate('reservations', d)} onSaveEnr={(d) => handleCreate('enrollments', d)} onSavePassword={handleUpdatePassword} setView={setView} />}
     </div>
   );
 }
@@ -159,9 +186,17 @@ const HowToBookScreen = ({ setView }) => {
   );
 };
 
-const AdminLoginScreen = ({ setView, showToast }) => {
+const AdminLoginScreen = ({ setView, onLogin }) => {
   const [pwd, setPwd] = useState('');
-  const handleLogin = (e) => { e.preventDefault(); if (pwd === 'dheyminarena') setView('admin_dashboard'); else showToast('Senha incorreta!', 'error'); };
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleLogin = async (e) => { 
+    e.preventDefault(); 
+    setIsLoading(true);
+    await onLogin(pwd); 
+    setIsLoading(false);
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative">
       <button onClick={() => setView('login')} className="absolute top-6 left-6 p-2 bg-zinc-900 rounded-full text-zinc-400"><ArrowLeft size={24} /></button>
@@ -170,7 +205,9 @@ const AdminLoginScreen = ({ setView, showToast }) => {
         <h2 className="text-2xl font-bold text-center mb-8">Login ADM</h2>
         <form onSubmit={handleLogin} className="space-y-6">
           <input type="password" value={pwd} onChange={(e) => setPwd(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 text-white px-4 py-3 rounded-xl focus:border-[#F58021] outline-none" placeholder="Senha" autoFocus />
-          <button type="submit" className="w-full bg-[#5A2C81] text-white font-bold py-3 rounded-xl hover:bg-[#4a246a]">Entrar</button>
+          <button type="submit" disabled={isLoading} className="w-full bg-[#5A2C81] text-white font-bold py-3 rounded-xl hover:bg-[#4a246a] disabled:opacity-50">
+            {isLoading ? 'Verificando...' : 'Entrar'}
+          </button>
         </form>
       </div>
     </div>
@@ -258,9 +295,11 @@ const BookingFormModal = ({ date, courtId, startTime, onClose, onSave, reservati
   );
 };
 
-const AdminDashboard = ({ reservations, enrollments, onDeleteRes, onDeleteEnr, onBlock, onSaveEnr, setView }) => {
+const AdminDashboard = ({ reservations, enrollments, onDeleteRes, onDeleteEnr, onBlock, onSaveEnr, onSavePassword, setView }) => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showEnrModal, setShowEnrModal] = useState(false);
+  const [showPwdModal, setShowPwdModal] = useState(false);
+
   const stats = useMemo(() => {
     const today = getDayString(new Date());
     let resTotal = 0, enrTotal = 0, todayTotal = 0;
@@ -272,7 +311,13 @@ const AdminDashboard = ({ reservations, enrollments, onDeleteRes, onDeleteEnr, o
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-zinc-950">
       <aside className="w-full md:w-64 bg-zinc-900 border-r border-zinc-800 p-4 sticky top-0 z-20 flex md:flex-col justify-between items-start">
-        <div className="w-full flex justify-between items-center md:mb-8"><h1 className="font-black text-white text-xl uppercase italic">Arena <span className="text-[#F58021]">ADM</span></h1><button onClick={() => setView('login')} className="text-zinc-500 hover:text-white"><ArrowLeft size={20} /></button></div>
+        <div className="w-full flex justify-between items-center md:mb-8">
+          <h1 className="font-black text-white text-xl uppercase italic">Arena <span className="text-[#F58021]">ADM</span></h1>
+          <div className="flex gap-4">
+            <button onClick={() => setShowPwdModal(true)} className="text-zinc-500 hover:text-white" title="Alterar Senha"><KeyRound size={20} /></button>
+            <button onClick={() => setView('login')} className="text-zinc-500 hover:text-white" title="Sair"><ArrowLeft size={20} /></button>
+          </div>
+        </div>
         <nav className="hidden md:flex flex-col gap-2 w-full"><button onClick={() => setActiveTab('dashboard')} className={`flex gap-3 px-4 py-3 rounded-xl transition-all ${activeTab==='dashboard'?'bg-[#F58021] text-white font-bold shadow-lg shadow-[#F58021]/20':'text-zinc-500 hover:bg-zinc-800'}`}><BarChart3 size={20}/> Resumo Financeiro</button><button onClick={() => setActiveTab('agenda')} className={`flex gap-3 px-4 py-3 rounded-xl transition-all ${activeTab==='agenda'?'bg-[#F58021] text-white font-bold shadow-lg shadow-[#F58021]/20':'text-zinc-500 hover:bg-zinc-800'}`}><CalendarDays size={20}/> Agenda</button><button onClick={() => setActiveTab('alunos')} className={`flex gap-3 px-4 py-3 rounded-xl transition-all ${activeTab==='alunos'?'bg-[#F58021] text-white font-bold shadow-lg shadow-[#F58021]/20':'text-zinc-500 hover:bg-zinc-800'}`}><GraduationCap size={20}/> Alunos/Matrículas</button></nav>
       </aside>
       <div className="md:hidden flex gap-2 p-2 bg-zinc-900 border-b border-zinc-800 overflow-x-auto sticky top-0 z-10"><button onClick={() => setActiveTab('dashboard')} className={`px-4 py-2 rounded-lg text-[10px] font-bold flex-shrink-0 ${activeTab==='dashboard'?'bg-[#F58021] text-white':'bg-zinc-800 text-zinc-500'}`}>RESUMO</button><button onClick={() => setActiveTab('agenda')} className={`px-4 py-2 rounded-lg text-[10px] font-bold flex-shrink-0 ${activeTab==='agenda'?'bg-[#F58021] text-white':'bg-zinc-800 text-zinc-500'}`}>AGENDA</button><button onClick={() => setActiveTab('alunos')} className={`px-4 py-2 rounded-lg text-[10px] font-bold flex-shrink-0 ${activeTab==='alunos'?'bg-[#F58021] text-white':'bg-zinc-800 text-zinc-500'}`}>ALUNOS</button></div>
@@ -294,7 +339,51 @@ const AdminDashboard = ({ reservations, enrollments, onDeleteRes, onDeleteEnr, o
         )}
       </main>
       {showEnrModal && <AdminEnrModal onSave={onSaveEnr} onClose={() => setShowEnrModal(false)} />}
+      {showPwdModal && <AdminPwdModal onSave={onSavePassword} onClose={() => setShowPwdModal(false)} />}
     </div>
+  );
+};
+
+const AdminPwdModal = ({ onSave, onClose }) => {
+  const [newPwd, setNewPwd] = useState('');
+  const [confirmPwd, setConfirmPwd] = useState('');
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if(newPwd !== confirmPwd) {
+       setError('As senhas não coincidem!');
+       return;
+    }
+    if(newPwd.length < 6) {
+       setError('A senha deve ter no mínimo 6 caracteres.');
+       return;
+    }
+    const ok = await onSave(newPwd);
+    if(ok) onClose();
+  };
+
+  return (
+     <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+       <div className="bg-zinc-900 w-full max-w-sm rounded-3xl p-6 border border-zinc-800">
+         <h3 className="text-xl font-bold mb-6 flex items-center gap-2"><KeyRound className="text-[#F58021]"/> Alterar Senha</h3>
+         {error && <p className="text-red-500 text-xs mb-4 font-bold">{error}</p>}
+         <form onSubmit={handleSubmit} className="space-y-4">
+           <div>
+              <label className="text-[10px] font-bold text-zinc-500 uppercase mb-2 block">Nova Senha</label>
+              <input required type="text" value={newPwd} onChange={e => setNewPwd(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-[#F58021]" />
+           </div>
+           <div>
+              <label className="text-[10px] font-bold text-zinc-500 uppercase mb-2 block">Confirmar Nova Senha</label>
+              <input required type="text" value={confirmPwd} onChange={e => setConfirmPwd(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-[#F58021]" />
+           </div>
+           <div className="flex gap-2 pt-4">
+             <button type="button" onClick={onClose} className="flex-1 py-3 border border-zinc-800 rounded-xl text-zinc-500 font-bold">Cancelar</button>
+             <button type="submit" className="flex-1 bg-[#F58021] text-white py-3 rounded-xl font-bold shadow-lg shadow-[#F58021]/20">Salvar</button>
+           </div>
+         </form>
+       </div>
+     </div>
   );
 };
 
