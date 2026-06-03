@@ -713,11 +713,11 @@ const AdminMonthlyClosure = ({ sysSettings, reservations, enrollments }) => {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center bg-zinc-900 p-4 rounded-2xl border border-zinc-800 print:hidden">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-zinc-900 p-4 rounded-2xl border border-zinc-800 print:hidden">
                 <h2 className="text-xl font-bold flex items-center gap-2"><FileText className="text-[#F58021]"/> Fechamento Mensal</h2>
-                <div className="flex gap-3">
-                    <input type="month" value={monthStr} onChange={e=>setMonthStr(e.target.value)} className="bg-zinc-950 text-white text-sm px-4 py-2 rounded-xl border border-zinc-800 outline-none focus:border-[#F58021]"/>
-                    <button onClick={handlePrint} className="bg-[#5A2C81] text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-[#4a246a] transition-colors"><Printer size={16}/> Exportar PDF</button>
+                <div className="flex w-full sm:w-auto gap-3">
+                    <input type="month" value={monthStr} onChange={e=>setMonthStr(e.target.value)} className="w-full sm:w-auto bg-zinc-950 text-white text-sm px-4 py-2 rounded-xl border border-zinc-800 outline-none focus:border-[#F58021]"/>
+                    <button onClick={handlePrint} className="flex-1 sm:flex-none justify-center bg-[#5A2C81] text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-[#4a246a] transition-colors"><Printer size={16}/> Exportar PDF</button>
                 </div>
             </div>
 
@@ -819,7 +819,7 @@ const AdminAgenda = ({ sysSettings, reservations, onDelete, onUpdateRes, onBlock
                   {res.status !== 'blocked' && <p className="text-[9px] text-[#5A2C81] uppercase font-black mb-1 bg-[#5A2C81]/10 inline-block px-1 rounded">{res.sport}</p>}
                   <p className="font-bold text-zinc-200 truncate pr-16">{res.customerName}</p>
                   
-                  <div className="absolute bottom-3 right-2 flex flex-col gap-1.5 opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="absolute bottom-3 right-2 flex flex-col gap-1.5">
                     {res.status !== 'blocked' && res.customerPhone && res.customerPhone !== '-' && (
                       <button onClick={() => { 
                         const cleanPhone = res.customerPhone.replace(/\D/g, '');
@@ -888,7 +888,7 @@ const AdminEnrollments = ({ enrollments, onDelete, onAdd }) => (
               </div>
               <div className="flex justify-between items-center border-t border-zinc-800 pt-3">
                   <span className="text-lg font-black text-[#F58021]">{formatCurrency(e.price)}</span>
-                  <button onClick={() => { if(window.confirm('Remover matrícula permanentemente?')) onDelete(e.id) }} className="p-2 bg-red-500/10 text-red-500 rounded-lg opacity-100 lg:opacity-0 group-hover:opacity-100 hover:bg-red-500 hover:text-white transition-all"><Trash2 size={16}/></button>
+                  <button onClick={() => { if(window.confirm('Remover matrícula permanentemente?')) onDelete(e.id) }} className="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-all shadow-sm"><Trash2 size={16}/></button>
               </div>
             </div>
       ))}</div>
