@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, onSnapshot, addDoc, deleteDoc, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
-import { Calendar, Clock, MapPin, X, Activity, CalendarDays, CheckCircle, Lock, Trash2, ArrowLeft, AlertCircle, RefreshCw, DollarSign, TrendingUp, BarChart3, Users, GraduationCap, Plus, CreditCard, Info, MessageCircle, KeyRound, Settings, Bell, FileText, Printer, ChevronDown, Check } from 'lucide-react';
+import { Calendar, Clock, MapPin, X, Activity, CalendarDays, CheckCircle, Lock, Trash2, ArrowLeft, AlertCircle, RefreshCw, DollarSign, TrendingUp, BarChart3, Users, GraduationCap, Plus, CreditCard, Info, MessageCircle, KeyRound, Settings, Bell, FileText, Printer, ChevronDown, Check, ShoppingBag, ShoppingCart, Minus, Shirt, Image as ImageIcon } from 'lucide-react';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAESjcStj4qQotTmSuU3-GAdellNR-DGwE",
@@ -40,6 +40,9 @@ const PLANS = [
   { id: 'start', name: 'Plano Start (1x na semana)', price: 60 },
   { id: 'evolution', name: 'Plano Evolution (2x na semana)', price: 110 }
 ];
+
+// Telefone Oficial da Arena para envio de pedidos via WhatsApp (Substitua pelo número correto)
+const ARENA_WHATSAPP = '5588921859996';
 
 // Helper Functions
 const generateTimeSlots = () => {
@@ -80,6 +83,7 @@ export default function App() {
   const [reservations, setReservations] = useState([]);
   const [enrollments, setEnrollments] = useState([]);
   const [notifications, setNotifications] = useState([]);
+  const [products, setProducts] = useState([]);
   const [sysSettings, setSysSettings] = useState({ courts: DEFAULT_COURTS, durations: DEFAULT_DURATIONS });
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
@@ -99,6 +103,19 @@ export default function App() {
         setNotifications(s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt)));
     });
     
+    // Produtos da Loja Virtual (Mesclando com dados base para garantir que não quebre)
+    const unsubProd = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'products'), (s) => {
+      const fetched = s.docs.map(d => ({ id: d.id, ...d.data() }));
+      const defaultBranca = { id: 'branca', name: 'Camisa Branca', price: 79.90, image: 'https://i.postimg.cc/Pxw3RnKL/Blusa-Branca.png', active: true };
+      const defaultPreta = { id: 'preta', name: 'Camisa Preta', price: 79.90, image: 'https://i.postimg.cc/d1kpcyQs/Blusa-Preta.png', active: true };
+      
+      const mergedProducts = [defaultBranca, defaultPreta].map(def => {
+        const found = fetched.find(f => f.id === def.id);
+        return found ? { ...def, ...found } : def;
+      });
+      setProducts(mergedProducts);
+    });
+
     // Settings logic (merge local with DB)
     const settingsRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'general');
     const unsubSet = onSnapshot(settingsRef, (docSnap) => {
@@ -109,7 +126,7 @@ export default function App() {
       setLoading(false);
     });
 
-    return () => { unsubRes(); unsubEnr(); unsubNotif(); unsubSet(); };
+    return () => { unsubRes(); unsubEnr(); unsubNotif(); unsubProd(); unsubSet(); };
   }, [user]);
 
   const showToast = (message, type = 'success') => setToast({ message, type });
@@ -157,6 +174,15 @@ export default function App() {
     catch { showToast("Erro ao remover.", "error"); }
   };
 
+  const handleSaveProduct = async (id, data) => {
+    try {
+        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'products', id), data, { merge: true });
+        showToast("Produto atualizado com sucesso!");
+    } catch {
+        showToast("Erro ao atualizar produto.", "error");
+    }
+  };
+
   const handleAdminLogin = async (pwd) => {
     try {
       const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'admin');
@@ -195,11 +221,13 @@ export default function App() {
       {view === 'how_to' && <HowToBookScreen setView={setView} />}
       {view === 'admin_login' && <AdminLoginScreen setView={setView} onLogin={handleAdminLogin} />}
       {view === 'customer' && <CustomerBookingScreen sysSettings={sysSettings} reservations={reservations} onSave={handleCreateReservation} setView={setView} />}
+      {view === 'store' && <StoreScreen products={products} setView={setView} />}
       {view === 'admin_dashboard' && <AdminDashboard 
           sysSettings={sysSettings} 
           reservations={reservations} 
           enrollments={enrollments} 
           notifications={notifications}
+          products={products}
           onDeleteRes={handleDeleteReservation} 
           onUpdateRes={handleUpdateReservationTime}
           onDeleteEnr={handleDeleteEnrollment} 
@@ -207,6 +235,7 @@ export default function App() {
           onSaveEnr={handleCreateEnrollment} 
           onSaveSettings={handleUpdateSettings} 
           onMarkNotificationRead={handleMarkNotificationRead}
+          onSaveProduct={handleSaveProduct}
           setView={setView} 
       />}
     </div>
@@ -221,11 +250,134 @@ const LoginScreen = ({ setView }) => (
       <img src="https://i.postimg.cc/j21g4jhM/Screenshot-20260508-202911-Instagram-2.jpg" alt="Arena JD" className="w-48 h-48 mx-auto mb-6 rounded-full object-cover shadow-[0_0_30px_rgba(90,44,129,0.4)] border-4 border-[#5A2C81]" />
       <h1 className="text-4xl font-black text-white uppercase mb-10 tracking-tighter">Arena <span className="text-[#F58021]">JD</span></h1>
       <button onClick={() => setView('customer')} className="w-full bg-[#F58021] text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-3 mb-4 shadow-xl shadow-[#F58021]/20 active:scale-95 transition-all hover:bg-[#e0751e]"><Calendar size={24} />AGENDAR HORÁRIO</button>
-      <button onClick={() => setView('how_to')} className="w-full bg-zinc-800 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-3 mb-4 active:scale-95 transition-all hover:bg-zinc-700"><Info size={24} className="text-[#F58021]" />COMO AGENDAR</button>
-      <button onClick={() => setView('admin_login')} className="w-full bg-zinc-900 border border-[#5A2C81] text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-3 active:bg-zinc-800 transition-all hover:bg-zinc-800"><Lock size={20} className="text-[#F58021]" />ACESSO RESTRITO</button>
+      <button onClick={() => setView('store')} className="w-full bg-zinc-800 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-3 mb-4 active:scale-95 transition-all hover:bg-zinc-700 shadow-xl shadow-black/50 border border-zinc-700"><ShoppingBag size={24} className="text-[#F58021]" />CAMISAS DA ARENA</button>
+      <button onClick={() => setView('how_to')} className="w-full bg-zinc-900 border border-zinc-800 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-3 mb-4 active:scale-95 transition-all hover:bg-zinc-800"><Info size={24} className="text-[#5A2C81]" />COMO AGENDAR</button>
+      <button onClick={() => setView('admin_login')} className="w-full bg-zinc-950 border border-[#5A2C81] text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-3 active:bg-zinc-900 transition-all hover:bg-zinc-900"><Lock size={20} className="text-[#F58021]" />ACESSO RESTRITO</button>
     </div>
   </div>
 );
+
+// --- LOJA DE CAMISAS ---
+const StoreScreen = ({ products, setView }) => {
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const activeProducts = products.filter(p => p.active);
+
+  return (
+    <div className="min-h-screen bg-zinc-950 pb-20">
+      <header className="sticky top-0 bg-zinc-950/90 border-b border-zinc-900 z-30 px-4 py-4 flex items-center gap-3 backdrop-blur-md">
+        <button onClick={() => setView('login')} className="p-2 bg-zinc-900 rounded-full text-zinc-400 hover:text-white transition-colors"><ArrowLeft size={20}/></button>
+        <h1 className="text-lg font-black uppercase tracking-tight text-white">Camisas da <span className="text-[#F58021]">Arena</span></h1>
+      </header>
+      
+      <main className="max-w-4xl mx-auto p-4 mt-4">
+        {activeProducts.length === 0 ? (
+            <div className="text-center text-zinc-500 mt-20">
+                <Shirt size={48} className="mx-auto mb-4 opacity-50" />
+                <p className="font-bold">Nenhuma camisa disponível no momento.</p>
+            </div>
+        ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {activeProducts.map(product => (
+                    <div key={product.id} className="bg-zinc-900 border border-zinc-800 rounded-3xl p-4 flex flex-col hover:border-[#F58021] transition-colors shadow-lg">
+                        {/* Área específica da imagem garantindo total visualização, sem cortes */}
+                        <div className="w-full bg-zinc-950 rounded-2xl p-6 flex items-center justify-center mb-4 border border-zinc-800/50 shadow-inner">
+                            <img src={product.image} alt={product.name} loading="lazy" className="w-full h-64 md:h-80 object-contain drop-shadow-2xl" />
+                        </div>
+                        <div className="px-2 pb-2 flex-1 flex flex-col justify-between">
+                            <div>
+                                <div className="flex items-start justify-between mb-2">
+                                    <h2 className="text-xl font-black text-white uppercase">{product.name}</h2>
+                                    <span className="bg-green-500/20 text-green-500 text-[10px] font-black px-2 py-1 rounded uppercase tracking-widest">Disponível</span>
+                                </div>
+                                <p className="text-2xl font-black text-[#F58021] mb-6">Valor: {formatCurrency(product.price)}</p>
+                            </div>
+                            <button onClick={() => setSelectedProduct(product)} className="w-full bg-[#5A2C81] hover:bg-[#4a246a] text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-[#5A2C81]/20">
+                                <ShoppingCart size={20} /> EU QUERO
+                            </button>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        )}
+      </main>
+
+      {selectedProduct && <StoreModal product={selectedProduct} onClose={() => setSelectedProduct(null)} />}
+    </div>
+  );
+};
+
+const StoreModal = ({ product, onClose }) => {
+    const [size, setSize] = useState('');
+    const [quantity, setQuantity] = useState(1);
+    const SIZES = ['PP', 'P', 'M', 'G', 'GG', 'XG'];
+
+    const handleSendOrder = () => {
+        if (!size) { alert('Por favor, selecione um tamanho!'); return; }
+        const total = product.price * quantity;
+        const text = `Olá! Gostaria de realizar o seguinte pedido:\n🏷 Produto: ${product.name}\n📏 Tamanho: ${size}\n📦 Quantidade: ${quantity}\n💰 Valor Unitário: ${formatCurrency(product.price)}\n🧾 Valor Total: ${formatCurrency(total)}\n\nAguardo confirmação. Obrigado!`;
+        window.open(`https://wa.me/${ARENA_WHATSAPP}?text=${encodeURIComponent(text)}`, '_blank');
+        onClose();
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/85 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+            <div className="bg-zinc-900 w-full max-w-md rounded-3xl p-6 border border-zinc-800 shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xl font-black uppercase text-white">Finalizar Pedido</h3>
+                    <button onClick={onClose} className="p-2 bg-zinc-800 rounded-full text-zinc-500 hover:text-white transition-colors"><X size={20}/></button>
+                </div>
+                
+                {/* Miniatura do Produto Sem Cortes */}
+                <div className="flex items-center gap-4 bg-zinc-950 p-4 rounded-2xl border border-zinc-800 mb-6">
+                    <div className="w-20 h-20 bg-zinc-900 rounded-xl flex-shrink-0 flex items-center justify-center p-2">
+                        <img src={product.image} alt={product.name} className="w-full h-full object-contain" />
+                    </div>
+                    <div>
+                        <p className="font-bold text-white text-sm uppercase">{product.name}</p>
+                        <p className="font-black text-[#F58021]">{formatCurrency(product.price)}</p>
+                    </div>
+                </div>
+
+                <div className="space-y-6">
+                    <div>
+                        <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-3 block">Escolha o Tamanho</label>
+                        <div className="grid grid-cols-3 gap-2">
+                            {SIZES.map(s => (
+                                <button key={s} onClick={() => setSize(s)} className={`py-3 rounded-xl font-black transition-all border ${size === s ? 'bg-[#5A2C81] border-[#5A2C81] text-white shadow-lg' : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-600'}`}>{s}</button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-3 block">Quantidade</label>
+                        <div className="flex items-center gap-4">
+                            <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-12 h-12 bg-zinc-950 border border-zinc-800 rounded-xl flex items-center justify-center text-zinc-300 hover:bg-zinc-800 active:scale-90 transition-all"><Minus size={20}/></button>
+                            <span className="text-2xl font-black w-8 text-center">{quantity}</span>
+                            <button onClick={() => setQuantity(quantity + 1)} className="w-12 h-12 bg-zinc-950 border border-zinc-800 rounded-xl flex items-center justify-center text-zinc-300 hover:bg-zinc-800 active:scale-90 transition-all"><Plus size={20}/></button>
+                        </div>
+                    </div>
+
+                    <div className="bg-zinc-950 border border-zinc-800 p-5 rounded-2xl">
+                        <p className="text-[10px] font-black text-[#F58021] uppercase tracking-widest mb-3">Resumo do Pedido</p>
+                        <div className="space-y-2 text-sm">
+                            <div className="flex justify-between"><span className="text-zinc-400 font-bold">Modelo</span> <span className="font-bold text-white">{product.name}</span></div>
+                            <div className="flex justify-between"><span className="text-zinc-400 font-bold">Tamanho</span> <span className="font-bold text-white">{size || '-'}</span></div>
+                            <div className="flex justify-between"><span className="text-zinc-400 font-bold">Quantidade</span> <span className="font-bold text-white">{quantity}</span></div>
+                            <div className="flex justify-between"><span className="text-zinc-400 font-bold">Valor Unitário</span> <span className="font-bold text-white">{formatCurrency(product.price)}</span></div>
+                            <div className="flex justify-between border-t border-zinc-800 pt-2 mt-2"><span className="text-zinc-300 font-black uppercase">Valor Total</span> <span className="font-black text-xl text-[#F58021]">{formatCurrency(product.price * quantity)}</span></div>
+                        </div>
+                    </div>
+
+                    <button disabled={!size} onClick={handleSendOrder} className="w-full bg-[#25D366] disabled:opacity-50 hover:bg-[#1ebd5a] text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-[#25D366]/20">
+                        ENVIAR PEDIDO VIA WHATSAPP
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// --- RESTE DO CÓDIGO (TELAS ANTERIORES) ---
 
 const HowToBookScreen = ({ setView }) => {
   const steps = [
@@ -365,7 +517,7 @@ const BookingFormModal = ({ sysSettings, date, courtId, startTime, onClose, onSa
 
 // --- ADMIN COMPONENTS ---
 
-const AdminDashboard = ({ sysSettings, reservations, enrollments, notifications, onDeleteRes, onUpdateRes, onDeleteEnr, onBlock, onSaveEnr, onSaveSettings, onMarkNotificationRead, setView }) => {
+const AdminDashboard = ({ sysSettings, reservations, enrollments, notifications, products, onDeleteRes, onUpdateRes, onDeleteEnr, onBlock, onSaveEnr, onSaveSettings, onMarkNotificationRead, onSaveProduct, setView }) => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showEnrModal, setShowEnrModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -394,6 +546,7 @@ const AdminDashboard = ({ sysSettings, reservations, enrollments, notifications,
             <SidebarBtn icon={<CalendarDays size={20}/>} label="Agenda" active={activeTab==='agenda'} onClick={()=>setActiveTab('agenda')} />
             <SidebarBtn icon={<GraduationCap size={20}/>} label="Alunos/Matrículas" active={activeTab==='alunos'} onClick={()=>setActiveTab('alunos')} />
             <SidebarBtn icon={<FileText size={20}/>} label="Fechamento Mensal" active={activeTab==='fechamento'} onClick={()=>setActiveTab('fechamento')} />
+            <SidebarBtn icon={<ShoppingBag size={20}/>} label="Loja de Camisas" active={activeTab==='loja'} onClick={()=>setActiveTab('loja')} />
         </nav>
       </aside>
       
@@ -403,6 +556,7 @@ const AdminDashboard = ({ sysSettings, reservations, enrollments, notifications,
           <MobileTab label="AGENDA" active={activeTab==='agenda'} onClick={()=>setActiveTab('agenda')} />
           <MobileTab label="ALUNOS" active={activeTab==='alunos'} onClick={()=>setActiveTab('alunos')} />
           <MobileTab label="MENSAL" active={activeTab==='fechamento'} onClick={()=>setActiveTab('fechamento')} />
+          <MobileTab label="LOJA" active={activeTab==='loja'} onClick={()=>setActiveTab('loja')} />
       </div>
 
       <main className="flex-1 p-4 md:p-8 min-w-0">
@@ -410,6 +564,7 @@ const AdminDashboard = ({ sysSettings, reservations, enrollments, notifications,
         {activeTab === 'agenda' && <AdminAgenda sysSettings={sysSettings} reservations={reservations} onDelete={onDeleteRes} onUpdateRes={onUpdateRes} onBlock={onBlock} />}
         {activeTab === 'alunos' && <AdminEnrollments enrollments={enrollments} onDelete={onDeleteEnr} onAdd={()=>setShowEnrModal(true)} />}
         {activeTab === 'fechamento' && <AdminMonthlyClosure sysSettings={sysSettings} reservations={reservations} enrollments={enrollments} />}
+        {activeTab === 'loja' && <AdminProducts products={products} onSaveProduct={onSaveProduct} />}
       </main>
 
       {/* Modals */}
@@ -430,7 +585,77 @@ const MobileTab = ({ label, active, onClick }) => (
     <button onClick={onClick} className={`px-4 py-2 rounded-lg text-[10px] font-bold flex-shrink-0 transition-colors ${active?'bg-[#F58021] text-white':'bg-zinc-800 text-zinc-500'}`}>{label}</button>
 );
 
-// --- NOTIFICATIONS PANEL ---
+// --- ADMIN PRODUCTS (LOJA) ---
+const AdminProducts = ({ products, onSaveProduct }) => {
+    return (
+        <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-zinc-900 p-4 rounded-2xl border border-zinc-800">
+                <div>
+                    <h2 className="text-xl font-bold flex items-center gap-2"><ShoppingBag className="text-[#F58021]"/> Gestão da Loja de Camisas</h2>
+                    <p className="text-xs text-zinc-400">Edite as informações dos produtos exibidos no aplicativo.</p>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {products.map(product => (
+                    <AdminProductCard key={product.id} product={product} onSaveProduct={onSaveProduct} />
+                ))}
+            </div>
+        </div>
+    );
+};
+
+const AdminProductCard = ({ product, onSaveProduct }) => {
+    const [price, setPrice] = useState(product.price);
+    const [image, setImage] = useState(product.image);
+    const [active, setActive] = useState(product.active);
+
+    const handleSave = () => {
+        onSaveProduct(product.id, { price: Number(price), image, active });
+    };
+
+    return (
+        <div className={`bg-zinc-900 border ${active ? 'border-[#5A2C81]' : 'border-zinc-800 opacity-70'} rounded-3xl p-6 shadow-sm`}>
+            <div className="flex justify-between items-center mb-4 border-b border-zinc-800 pb-4">
+                <h3 className="font-black text-lg text-white uppercase">{product.name}</h3>
+                <label className="flex items-center cursor-pointer gap-2">
+                    <span className="text-[10px] font-bold uppercase text-zinc-500">{active ? 'Ativo' : 'Desativado'}</span>
+                    <div className="relative">
+                        <input type="checkbox" className="sr-only" checked={active} onChange={(e) => setActive(e.target.checked)} />
+                        <div className={`block w-10 h-6 rounded-full transition-colors ${active ? 'bg-[#25D366]' : 'bg-zinc-700'}`}></div>
+                        <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${active ? 'transform translate-x-4' : ''}`}></div>
+                    </div>
+                </label>
+            </div>
+            
+            <div className="space-y-4">
+                <div className="flex gap-4">
+                    <div className="w-24 h-24 bg-zinc-950 rounded-xl border border-zinc-800 flex items-center justify-center p-2 flex-shrink-0">
+                        <img src={image} alt={product.name} className="w-full h-full object-contain" />
+                    </div>
+                    <div className="flex-1 space-y-3">
+                        <div>
+                            <label className="text-[10px] font-bold text-zinc-500 uppercase flex items-center gap-1 mb-1"><DollarSign size={12}/> Preço de Venda (R$)</label>
+                            <input type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-[#F58021]" />
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase flex items-center gap-1 mb-1"><ImageIcon size={12}/> URL da Imagem</label>
+                    <input type="text" value={image} onChange={(e) => setImage(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-zinc-400 outline-none focus:border-[#F58021]" />
+                </div>
+                
+                <button onClick={handleSave} className="w-full bg-[#5A2C81] hover:bg-[#4a246a] text-white font-bold py-3 rounded-xl transition-all shadow-lg mt-2">
+                    SALVAR ALTERAÇÕES
+                </button>
+            </div>
+        </div>
+    );
+};
+
+// ... O restante dos componentes administrativos (AdminFinance, AdminAgenda, AdminEnrollments, AdminMonthlyClosure, etc.) e modais permanecem os mesmos. ...
+// Para não estourar os limites da janela, incluirei os componentes finais que não sofreram alterações em sua lógica original mas fazem parte do arquivo:
+
 const NotificationsPanel = ({ notifications, onMarkRead, onClose }) => {
     return (
         <div className="fixed inset-y-0 right-0 w-full md:w-96 bg-zinc-900 shadow-2xl z-50 flex flex-col border-l border-zinc-800 transform transition-transform duration-300">
@@ -457,7 +682,6 @@ const NotificationsPanel = ({ notifications, onMarkRead, onClose }) => {
     );
 };
 
-// --- SETTINGS MODAL ---
 const AdminSettingsModal = ({ sysSettings, onSave, onClose }) => {
     const [tab, setTab] = useState('geral');
     const [pwd, setPwd] = useState('');
@@ -545,7 +769,6 @@ const AdminSettingsModal = ({ sysSettings, onSave, onClose }) => {
     )
 }
 
-// --- ADMIN FINANCE (RESUMO) ---
 const AdminFinance = ({ sysSettings, reservations, enrollments }) => {
   const COURTS = sysSettings.courts;
   const [period, setPeriod] = useState('diario');
@@ -578,7 +801,6 @@ const AdminFinance = ({ sysSettings, reservations, enrollments }) => {
     const qty = filteredRes.length;
     const ticketMedio = qty > 0 ? resTotal / qty : 0;
     
-    // Enrollments apply globally to revenue
     let enrTotal = 0;
     enrollments.forEach(e => enrTotal += (e.price || 0));
 
@@ -658,8 +880,6 @@ const StatCard = ({ title, value, highlight, border }) => (
     </div>
 );
 
-
-// --- ADMIN MONTHLY CLOSURE (FECHAMENTO) ---
 const AdminMonthlyClosure = ({ sysSettings, reservations, enrollments }) => {
     const COURTS = sysSettings.courts;
     const today = new Date();
@@ -694,9 +914,8 @@ const AdminMonthlyClosure = ({ sysSettings, reservations, enrollments }) => {
         const curr = calculateStats(currRes);
         const prev = calculateStats(prevRes);
         
-        // Add enrollments to global revenue logic
         const enrRev = enrollments.reduce((acc, e) => acc + (e.price || 0), 0);
-        curr.total += enrRev; prev.total += enrRev; // Assuming same enrollments for comparison simplicity
+        curr.total += enrRev; prev.total += enrRev;
 
         const daysInMonth = new Date(y, m, 0).getDate();
         const avgDaily = curr.total / daysInMonth;
@@ -707,9 +926,7 @@ const AdminMonthlyClosure = ({ sysSettings, reservations, enrollments }) => {
         return { ...curr, prevTotal: prev.total, bestCourtName, avgDaily, growth };
     }, [reservations, enrollments, monthStr, COURTS]);
 
-    const handlePrint = () => {
-        window.print();
-    };
+    const handlePrint = () => window.print();
 
     return (
         <div className="space-y-6">
@@ -721,7 +938,6 @@ const AdminMonthlyClosure = ({ sysSettings, reservations, enrollments }) => {
                 </div>
             </div>
 
-            {/* Print Area */}
             <div className="print:block print:bg-white print:text-black space-y-6 p-4 print:p-0">
                 <div className="hidden print:flex flex-col items-center border-b pb-4 mb-6">
                     <h1 className="text-2xl font-black uppercase">Arena JD - Relatório de Fechamento</h1>
@@ -765,7 +981,6 @@ const AdminMonthlyClosure = ({ sysSettings, reservations, enrollments }) => {
                     </div>
                 </div>
                 
-                {/* Simulated Chart Area for Visuals */}
                 <div className="bg-zinc-900 print:bg-white border border-zinc-800 print:border-gray-300 p-6 rounded-2xl">
                     <h3 className="font-bold text-white print:text-black mb-4">Comparativo: Este Mês vs Mês Anterior</h3>
                     <div className="space-y-6 mt-6">
@@ -784,11 +999,9 @@ const AdminMonthlyClosure = ({ sysSettings, reservations, enrollments }) => {
     );
 };
 
-
-// --- ADMIN AGENDA ---
 const AdminAgenda = ({ sysSettings, reservations, onDelete, onUpdateRes, onBlock }) => {
   const COURTS = sysSettings.courts;
-  const TIME_SLOTS_FULL = sysSettings.durations; // For block selection
+  const TIME_SLOTS_FULL = sysSettings.durations;
   const [filterDate, setFilterDate] = useState(getDayString(new Date()));
   const [isBlocking, setIsBlocking] = useState(false);
   const daily = reservations.filter(r => r.date === filterDate).sort((a,b) => a.startTime.localeCompare(b.startTime));
@@ -835,7 +1048,6 @@ const AdminAgenda = ({ sysSettings, reservations, onDelete, onUpdateRes, onBlock
         })}
       </div>
       
-      {/* Block Modal */}
       {isBlocking && (
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
           <div className="bg-zinc-900 w-full max-w-sm rounded-3xl p-6 border border-red-900/50 shadow-2xl">
@@ -861,8 +1073,6 @@ const AdminAgenda = ({ sysSettings, reservations, onDelete, onUpdateRes, onBlock
   );
 };
 
-
-// --- ADMIN ENROLLMENTS (ALUNOS) ---
 const AdminEnrollments = ({ enrollments, onDelete, onAdd }) => (
     <div className="space-y-6">
       <div className="flex justify-between items-center bg-zinc-900 p-4 rounded-2xl border border-zinc-800">
